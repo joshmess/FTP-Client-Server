@@ -1,5 +1,4 @@
-# simple-ftp
-CSCI 4780 Project 1 Implements a basic FTP client-server program.
+# simple-ftp project
 Josh Messitte, Alex Holmes, Robert
 
 ### Compile Client:
