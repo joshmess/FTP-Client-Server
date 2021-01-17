@@ -8,7 +8,7 @@ import java.math.*;
 public class myftp {
 
 	public static void main(String[] args) {
-		
+
 		Scanner in = new Scanner(System.in);
 
 		try {
@@ -26,9 +26,23 @@ public class myftp {
 				System.out.print(prompt + " ");
 				cmd = in.nextLine();
 				System.out.println();
-				dout.writeUTF(cmd);  
-				dout.flush();  
-				System.out.println(din.readUTF());
+
+				if(cmd.equals("ls") || cmd.equals("pwd") || cmd.indexOf("mkdir") != -1) {
+					dout.writeUTF(cmd);  
+					dout.flush();  
+					System.out.println(din.readUTF());
+				}else if(cmd.indexOf("get") != -1) {
+					dout.writeUTF(cmd);  
+					dout.flush();  
+					String response = din.readUTF();
+					if(response.equals("FOUND")) {
+						//create file
+					}
+					else {
+						System.out.println("[ERR] File not found.");
+						
+					}
+				}
 			}
 			dout.close();  
 			client_sock.close();  

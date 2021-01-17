@@ -37,7 +37,6 @@ public class myftpserver {
 					Arrays.sort(file_list);
 					for(File f: file_list) {
 						files += f.getName() + " ";
-		
 					}
 					dos.writeUTF(files);
 					dos.flush();
@@ -49,12 +48,24 @@ public class myftpserver {
 					dos.flush();
 				}else if(cmd.indexOf("mkdir") != -1){
 					String dirname = cmd.substring(cmd.indexOf(" ")+1);
-					System.out.println("Dirname: "+dirname);
 					File f = new File("./"+dirname);
 					f.mkdir();
-					dos.writeUTF("");
+					dos.writeUTF("Directory created.");
+					dos.flush();
+				}else if(cmd.indexOf("get")!= -1){
+					String filename = cmd.substring(cmd.indexOf(" ")+1);
+					File dir = new File(".");
+					File[] file_list = dir.listFiles();
+					for(File f: file_list) {
+						if(filename.equals(f.getName())) {
+							dos.writeUTF("FOUND");
+							//copy file here
+						}
+					}
+					dos.writeUTF("UNFOUND");
+					dos.flush();
 				}else {
-				
+		
 					//command not recognized
 					dos.writeUTF("");
 					dos.flush();
