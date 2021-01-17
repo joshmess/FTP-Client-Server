@@ -1,6 +1,7 @@
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -27,8 +28,8 @@ public class myftpserver {
 				DataInputStream dis=new DataInputStream(client_sock.getInputStream());  
 				DataOutputStream dos = new DataOutputStream(client_sock.getOutputStream());
 				cmd=(String)dis.readUTF();  
-				
-				
+
+
 				if(cmd.equals("ls")) {
 					//list all files in pwd
 					File dir = new File(".");
@@ -53,19 +54,35 @@ public class myftpserver {
 					dos.writeUTF("Directory created.");
 					dos.flush();
 				}else if(cmd.indexOf("get")!= -1){
+					boolean exists = false;
 					String filename = cmd.substring(cmd.indexOf(" ")+1);
 					File dir = new File(".");
 					File[] file_list = dir.listFiles();
 					for(File f: file_list) {
 						if(filename.equals(f.getName())) {
+							exists = true;
 							dos.writeUTF("FOUND");
 							//copy file here
+							int bytes = 0;
+							File f2c = new File(filename);
+							FileInputStream fis = new FileInputStream(f2c);
+							//send file size
+							dos.writeLong(f2c.length());
+							//send file in chunks
+							byte[] buffer = new byte[4*1024];
+							while ((bytes=fis.read(buffer))!=-1){
+								dos.write(buffer,0,bytes);
+								dos.flush();
+							}
+							fis.close();
 						}
 					}
-					dos.writeUTF("UNFOUND");
-					dos.flush();
+					if(!exists) {
+						dos.writeUTF("UNFOUND");
+						dos.flush();
+					}
 				}else {
-		
+
 					//command not recognized
 					dos.writeUTF("");
 					dos.flush();

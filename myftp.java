@@ -1,4 +1,6 @@
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.Socket;
@@ -37,10 +39,21 @@ public class myftp {
 					String response = din.readUTF();
 					if(response.equals("FOUND")) {
 						//create file
+						String newf = cmd.substring(cmd.indexOf(" ")+1);
+						int bytes = 0;
+						FileOutputStream fos = new FileOutputStream(newf);
+
+						long size = din.readLong();     // read file size
+						byte[] buffer = new byte[4*1024];
+						while (size > 0 && (bytes = din.read(buffer, 0, (int)Math.min(buffer.length, size))) != -1) {
+							fos.write(buffer,0,bytes);
+							size -= bytes;      // read upto file size
+						}
+						fos.close();
 					}
 					else {
 						System.out.println("[ERR] File not found.");
-						
+
 					}
 				}
 			}
