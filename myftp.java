@@ -59,11 +59,12 @@ public class myftp {
 				}else if(cmd.indexOf("put") != -1) {
 					dout.writeUTF(cmd);  
 					dout.flush(); 
-					String file2send = cmd.substring(cmd.indexOf(" ")+1);
+					String filename = cmd.substring(cmd.indexOf(" ")+1);
 					int bytes=0;
-					FileInputStream fis = new FileInputStream(file2send);
+					File file = new File(filename);
+					FileInputStream fis = new FileInputStream(file);
 					//send file size
-					dout.writeLong(file2send.length());
+					dout.writeLong(file.length());
 					//send file in chunks
 					byte[] buffer = new byte[4*1024];
 					while ((bytes=fis.read(buffer))!=-1){

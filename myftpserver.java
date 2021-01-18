@@ -66,12 +66,13 @@ public class myftpserver {
 						if(filename.equals(f.getName())) {
 							exists = true;
 							dos.writeUTF("FOUND");
+							dos.flush();
 							//copy file here
 							int bytes = 0;
-							File f2c = new File(filename);
-							FileInputStream fis = new FileInputStream(f2c);
+							File file = new File(filename);
+							FileInputStream fis = new FileInputStream(file);
 							//send file size
-							dos.writeLong(f2c.length());
+							dos.writeLong(file.length());
 							//send file in chunks
 							byte[] buffer = new byte[4*1024];
 							while ((bytes=fis.read(buffer))!=-1){
@@ -85,7 +86,7 @@ public class myftpserver {
 						dos.writeUTF("UNFOUND");
 						dos.flush();
 					}
-				}else if(cmd.indexOf("cd") != 1){
+				}else if(cmd.indexOf("cd") != -1){
 					//change the present working directory
 					boolean exists = false;
 					String dirname = cmd.substring(cmd.indexOf(" ")+1);
