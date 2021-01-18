@@ -1,5 +1,6 @@
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -55,6 +56,21 @@ public class myftp {
 						System.out.println("[ERR] File not found.");
 
 					}
+				}else if(cmd.indexOf("put") != -1) {
+					dout.writeUTF(cmd);  
+					dout.flush(); 
+					String file2send = cmd.substring(cmd.indexOf(" ")+1);
+					int bytes=0;
+					FileInputStream fis = new FileInputStream(file2send);
+					//send file size
+					dout.writeLong(file2send.length());
+					//send file in chunks
+					byte[] buffer = new byte[4*1024];
+					while ((bytes=fis.read(buffer))!=-1){
+						dout.write(buffer,0,bytes);
+						dout.flush();
+					}
+					fis.close();
 				}
 			}
 			dout.close();  

@@ -2,6 +2,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -24,6 +25,7 @@ public class myftpserver {
 			Socket client_sock = server_sock.accept();
 			System.out.println("Connection Established.");
 			String cmd = "";
+			
 			while(!cmd.equals("quit")) {
 				DataInputStream dis=new DataInputStream(client_sock.getInputStream());  
 				DataOutputStream dos = new DataOutputStream(client_sock.getOutputStream());
@@ -48,12 +50,14 @@ public class myftpserver {
 					dos.writeUTF(pwd);
 					dos.flush();
 				}else if(cmd.indexOf("mkdir") != -1){
+					//create a directory in the present working directory
 					String dirname = cmd.substring(cmd.indexOf(" ")+1);
 					File f = new File("./"+dirname);
 					f.mkdir();
 					dos.writeUTF("");
 					dos.flush();
 				}else if(cmd.indexOf("get")!= -1){
+					//copy file from remote server to local directory
 					boolean exists = false;
 					String filename = cmd.substring(cmd.indexOf(" ")+1);
 					File dir = new File(".");
@@ -82,15 +86,14 @@ public class myftpserver {
 						dos.flush();
 					}
 				}else if(cmd.indexOf("cd") != 1){
-					
+					//change the present working directory
 					boolean exists = false;
 					String dirname = cmd.substring(cmd.indexOf(" ")+1);
 					
 			        File directory = new File(dirname).getAbsoluteFile();
-			        if (directory.exists() || directory.mkdirs())
-			        {
-			            exists = (System.setProperty("user.dir", directory.getAbsolutePath()) != null);
-			        }
+			       
+			        exists = (System.setProperty("user.dir", directory.getAbsolutePath()) != null);
+			        
 			        
 			        if(!exists) {
 			        	dos.writeUTF("No such file or directory");
@@ -100,6 +103,19 @@ public class myftpserver {
 						dos.flush();
 			        }
 
+				}else if(cmd.indexOf("put")!= -1){
+					//put file from local directory into remote server
+					String filename = cmd.substring(cmd.indexOf(" ")+1);
+					FileOutputStream fos = new FileOutputStream(filename);
+					int bytes = 0;
+					long size = dis.readLong();   
+					byte[] buffer = new byte[4*1024];
+					while (size > 0 && (bytes = dis.read(buffer, 0, (int)Math.min(buffer.length, size))) != -1) {
+						fos.write(buffer,0,bytes);
+						size -= bytes;     
+					}
+					fos.close();
+					
 				}else {
 
 					//command not recognized
