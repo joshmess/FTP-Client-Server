@@ -51,7 +51,7 @@ public class myftpserver {
 					String dirname = cmd.substring(cmd.indexOf(" ")+1);
 					File f = new File("./"+dirname);
 					f.mkdir();
-					dos.writeUTF("Directory created.");
+					dos.writeUTF("");
 					dos.flush();
 				}else if(cmd.indexOf("get")!= -1){
 					boolean exists = false;
@@ -81,6 +81,25 @@ public class myftpserver {
 						dos.writeUTF("UNFOUND");
 						dos.flush();
 					}
+				}else if(cmd.indexOf("cd") != 1){
+					
+					boolean exists = false;
+					String dirname = cmd.substring(cmd.indexOf(" ")+1);
+					
+			        File directory = new File(dirname).getAbsoluteFile();
+			        if (directory.exists() || directory.mkdirs())
+			        {
+			            exists = (System.setProperty("user.dir", directory.getAbsolutePath()) != null);
+			        }
+			        
+			        if(!exists) {
+			        	dos.writeUTF("No such file or directory");
+						dos.flush();
+			        }else {
+			        	dos.writeUTF("");
+						dos.flush();
+			        }
+
 				}else {
 
 					//command not recognized

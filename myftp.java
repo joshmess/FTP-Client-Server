@@ -29,7 +29,7 @@ public class myftp {
 				cmd = in.nextLine();
 				System.out.println();
 
-				if(cmd.equals("ls") || cmd.equals("pwd") || cmd.indexOf("mkdir") != -1) {
+				if(cmd.equals("ls") || cmd.equals("pwd") || cmd.indexOf("mkdir") != -1 || cmd.indexOf("cd") != 1) {
 					dout.writeUTF(cmd);  
 					dout.flush();  
 					System.out.println(din.readUTF());
@@ -43,11 +43,11 @@ public class myftp {
 						int bytes = 0;
 						FileOutputStream fos = new FileOutputStream(newf);
 
-						long size = din.readLong();     // read file size
+						long size = din.readLong();     
 						byte[] buffer = new byte[4*1024];
 						while (size > 0 && (bytes = din.read(buffer, 0, (int)Math.min(buffer.length, size))) != -1) {
 							fos.write(buffer,0,bytes);
-							size -= bytes;      // read upto file size
+							size -= bytes;     
 						}
 						fos.close();
 					}
