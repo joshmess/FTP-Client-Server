@@ -56,8 +56,12 @@ public class myftpserver {
 					f.mkdir();
 					dos.writeUTF("");
 					dos.flush();
-				}else if(cmd.indexOf("get")!= -1){
-					//copy file from remote server to local directory
+				}
+
+
+
+
+				else if(cmd.indexOf("get")!= -1){
 					boolean exists = false;
 					String filename = cmd.substring(cmd.indexOf(" ")+1);
 					File dir = new File(".");
@@ -86,7 +90,12 @@ public class myftpserver {
 						dos.writeUTF("UNFOUND");
 						dos.flush();
 					}
-				}else if(cmd.indexOf("cd") != -1){
+				}
+
+
+
+				
+				else if(cmd.indexOf("cd") != -1){
 					//change the present working directory
 					boolean exists = false;
 					String dirname = cmd.substring(cmd.indexOf(" ")+1);
@@ -104,9 +113,12 @@ public class myftpserver {
 						dos.flush();
 			        }
 
+
+
+
 				}else if(cmd.indexOf("put")!= -1){
-					//put file from local directory into remote server
 					String filename = cmd.substring(cmd.indexOf(" ")+1);
+					System.out.println(filename);
 					FileOutputStream fos = new FileOutputStream(filename);
 					int bytes = 0;
 					long size = dis.readLong();   
@@ -116,7 +128,35 @@ public class myftpserver {
 						size -= bytes;     
 					}
 					fos.close();
-					
+				}
+
+
+
+
+				else if(cmd.indexOf("delete")!=-1) { //check if file exists in directory first 
+					boolean exists=false;
+					String filename=cmd.substring(cmd.indexOf(" ")+1);
+					File dir=new File(".");
+					File[] file_list=dir.listFiles();
+					for(File f: file_list) {
+						if(filename.equals(f.getName())){ 
+							exists=true;
+							dos.writeUTF("FOUND");
+							dos.flush();
+							File file=new File(filename);
+							if(file.delete()) {
+								System.out.println("File "+filename+" deleted.");
+							}
+							else {
+								System.out.println("Failed to delete file "+filename);
+							}
+							break;
+						}
+					}
+					if(!exists) {
+						dos.writeUTF("UNFOUND");
+						dos.flush();
+						}
 				}else {
 
 					//command not recognized
@@ -126,7 +166,7 @@ public class myftpserver {
 			}
 			server_sock.close();  
 		} catch (IOException e) {
-			e.printStackTrace();
+			//e.printStackTrace();
 		}
 	}
 
