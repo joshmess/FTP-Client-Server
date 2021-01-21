@@ -110,7 +110,7 @@ public class myftpserver {
 				}else if(cmd.indexOf("put")!= -1){
 					String filename = cmd.substring(cmd.indexOf(" ")+1);
 					System.out.println(filename);
-					FileOutputStream fos = new FileOutputStream("File "+filename+" added.");
+					FileOutputStream fos = new FileOutputStream(filename);
 					int bytes = 0;
 					long size = dis.readLong();   
 					byte[] buffer = new byte[4*1024];
