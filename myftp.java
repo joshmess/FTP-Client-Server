@@ -54,6 +54,7 @@ public class myftp {
 							size -= bytes;     
 						}
 						fos.close();
+						System.out.println("File "+newf+" downloaded from remote directory.");
 					}
 					else {
 						System.out.println("[ERR] File not found.");
@@ -69,6 +70,7 @@ public class myftp {
 					boolean exists=false;
 					for(File f: file_list) {
 						if(filename.equals(f.getName())) {
+							
 							exists=true;
 							dout.writeUTF(cmd);  
 							dout.flush(); 
@@ -84,6 +86,7 @@ public class myftp {
 								dout.flush();
 							}
 							fis.close();
+							System.out.println("File "+filename+" added to remote directory.");
 						}
 					}
 					if(!exists) {
@@ -100,7 +103,7 @@ public class myftp {
 					String response=din.readUTF();
 					String filename=cmd.substring(cmd.indexOf(" ")+1);
 					if(response.equals("FOUND")){	//file was found in remote directory
-						System.out.println("File "+filename+" deleted");
+						System.out.println("File "+filename+" deleted from remote directory.");
 					}
 					else {							//file not found in the remote directory
 						System.out.println("[ERR] File not found.");

@@ -58,9 +58,6 @@ public class myftpserver {
 					dos.flush();
 				}
 
-
-
-
 				else if(cmd.indexOf("get")!= -1){
 					boolean exists = false;
 					String filename = cmd.substring(cmd.indexOf(" ")+1);
@@ -92,9 +89,6 @@ public class myftpserver {
 					}
 				}
 
-
-
-				
 				else if(cmd.indexOf("cd") != -1){
 					//change the present working directory
 					boolean exists = false;
@@ -113,13 +107,10 @@ public class myftpserver {
 						dos.flush();
 			        }
 
-
-
-
 				}else if(cmd.indexOf("put")!= -1){
 					String filename = cmd.substring(cmd.indexOf(" ")+1);
 					System.out.println(filename);
-					FileOutputStream fos = new FileOutputStream(filename);
+					FileOutputStream fos = new FileOutputStream("File "+filename+" added.");
 					int bytes = 0;
 					long size = dis.readLong();   
 					byte[] buffer = new byte[4*1024];
