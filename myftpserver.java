@@ -36,7 +36,7 @@ public class myftpserver {
 
 				if(cmd.equals("ls")) {
 					//list all files in pwd
-					File dir = new File(".");
+					File dir = new File(pwd);
 					File[] file_list = dir.listFiles();
 					String files ="";
 					Arrays.sort(file_list);
@@ -62,7 +62,7 @@ public class myftpserver {
 				else if(cmd.indexOf("get")!= -1){
 					boolean exists = false;
 					String filename = cmd.substring(cmd.indexOf(" ")+1);
-					File dir = new File(".");
+					File dir = new File(pwd);
 					File[] file_list = dir.listFiles();
 					for(File f: file_list) {
 						if(filename.equals(f.getName())) {
@@ -95,15 +95,15 @@ public class myftpserver {
 					String dirname = cmd.substring(cmd.indexOf(" ")+1);
 
 					if(dirname.equals("..")) {
-						int index = pwd.lastIndexOf('/');
+					        int index = pwd.lastIndexOf('/');
 						pwd = pwd.substring(0,index);
-						File directory = new File("..").getAbsoluteFile();
-						dos.writeUTF("changing working directory");
+						File directory = new File(pwd).getAbsoluteFile();
+						dos.writeUTF("changing working directory to "+directory.getAbsolutePath());
 						System.setProperty("user.dir", directory.getAbsolutePath());
 					}else {
 						pwd = pwd + "/" + dirname;
 						File directory = new File(pwd).getAbsoluteFile();
-						dos.writeUTF("changing working directory");
+						dos.writeUTF("changing working directory to "+directory.getAbsolutePath());
 						System.setProperty("user.dir", directory.getAbsolutePath());
 					}
 
@@ -127,7 +127,7 @@ public class myftpserver {
 				else if(cmd.indexOf("delete")!=-1) { //check if file exists in directory first 
 					boolean exists=false;
 					String filename=cmd.substring(cmd.indexOf(" ")+1);
-					File dir=new File(".");
+					File dir=new File(pwd);
 					File[] file_list=dir.listFiles();
 					for(File f: file_list) {
 						if(filename.equals(f.getName())){ 
