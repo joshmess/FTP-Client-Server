@@ -15,6 +15,8 @@ public class myftpserver {
 
 		try {
 
+			String pwd = new File(".").getCanonicalPath();
+
 			if (args.length == 0){
 				System.out.println("[ERR] Include port number argument");
 				System.exit(0);
@@ -25,7 +27,7 @@ public class myftpserver {
 			Socket client_sock = server_sock.accept();
 			System.out.println("Connection Established.");
 			String cmd = "";
-			
+
 			while(!cmd.equals("quit")) {
 				DataInputStream dis=new DataInputStream(client_sock.getInputStream());  
 				DataOutputStream dos = new DataOutputStream(client_sock.getOutputStream());
@@ -46,7 +48,6 @@ public class myftpserver {
 
 				}else if(cmd.equals("pwd")){
 					//get the name of the current directory where the server resides
-					String pwd = new File(".").getCanonicalPath();
 					dos.writeUTF(pwd);
 					dos.flush();
 				}else if(cmd.indexOf("mkdir") != -1){
@@ -91,21 +92,20 @@ public class myftpserver {
 
 				else if(cmd.indexOf("cd") != -1){
 					//change the present working directory
-					boolean exists = false;
 					String dirname = cmd.substring(cmd.indexOf(" ")+1);
-					
-			        File directory = new File(dirname).getAbsoluteFile();
-			       
-			        exists = (System.setProperty("user.dir", directory.getAbsolutePath()) != null);
-			        
-			        
-			        if(!exists) {
-			        	dos.writeUTF("No such file or directory");
-						dos.flush();
-			        }else {
-			        	dos.writeUTF("");
-						dos.flush();
-			        }
+
+					if(dirname.equals("..")) {
+						int index = pwd.lastIndexOf('/');
+						pwd = pwd.substring(0,index);
+						File directory = new File("..").getAbsoluteFile();
+						dos.writeUTF("changing working directory");
+						System.setProperty("user.dir", directory.getAbsolutePath());
+					}else {
+						pwd = pwd + "/" + dirname;
+						File directory = new File(pwd).getAbsoluteFile();
+						dos.writeUTF("changing working directory");
+						System.setProperty("user.dir", directory.getAbsolutePath());
+					}
 
 				}else if(cmd.indexOf("put")!= -1){
 					String filename = cmd.substring(cmd.indexOf(" ")+1);
@@ -147,7 +147,7 @@ public class myftpserver {
 					if(!exists) {
 						dos.writeUTF("UNFOUND");
 						dos.flush();
-						}
+					}
 				}else {
 
 					//command not recognized

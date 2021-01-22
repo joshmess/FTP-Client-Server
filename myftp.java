@@ -36,7 +36,6 @@ public class myftp {
 				}
 
 
-
 				else if(cmd.indexOf("get") != -1) {
 					dout.writeUTF(cmd);  
 					dout.flush();  
