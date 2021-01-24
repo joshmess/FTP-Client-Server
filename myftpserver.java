@@ -53,7 +53,7 @@ public class myftpserver {
 				}else if(cmd.indexOf("mkdir") != -1){
 					//create a directory in the present working directory
 					String dirname = cmd.substring(cmd.indexOf(" ")+1);
-					File f = new File("./"+dirname);
+					File f = new File(pwd+"/"+dirname);
 					f.mkdir();
 					dos.writeUTF("");
 					dos.flush();
@@ -107,7 +107,7 @@ public class myftpserver {
 						System.setProperty("user.dir", directory.getAbsolutePath());
 					}
 
-				}else if(cmd.indexOf("put")!= -1){
+				}else if(cmd.indexOf("put ")!= -1){
 					String filename = cmd.substring(cmd.indexOf(" ")+1);
 					System.out.println(filename);
 					FileOutputStream fos = new FileOutputStream(filename);
@@ -120,9 +120,6 @@ public class myftpserver {
 					}
 					fos.close();
 				}
-
-
-
 
 				else if(cmd.indexOf("delete")!=-1) { //check if file exists in directory first 
 					boolean exists=false;
