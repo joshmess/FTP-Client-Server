@@ -62,7 +62,7 @@ public class myftp {
 				}
 
 
-				else if(cmd.indexOf("put") != -1) {			//check if the file is in the local directory
+				else if(cmd.indexOf("put ") != -1) {			//check if the file is in the local directory
 					String filename=cmd.substring(cmd.indexOf(" ")+1);
 					File dir=new File(".");
 					File[] file_list=dir.listFiles();
@@ -97,6 +97,7 @@ public class myftp {
 
 				//delete works fine now
 				else if(cmd.indexOf("delete")!=-1) { //need to check if the file is found
+					
 					dout.writeUTF(cmd);
 					dout.flush();
 					String response=din.readUTF();
