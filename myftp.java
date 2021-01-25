@@ -6,38 +6,42 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.*;
-import java.math.*;
 
 public class myftp {
 
 	public static void main(String[] args) {
+		if(args.length != 3){
+			System.out.println("[ERR] Please include three arguments, machine name, normal port number, and terminate port number");
+		}
+
+		String machine = args[0];
+		int nPort = Integer.parseInt(args[1]);
+		int tPort = Integer.parseInt(args[2]);
 
 		Scanner in = new Scanner(System.in);
 
 		try {
-			if(args.length != 2){
-				System.out.println("[ERR] Please include two arguments, machine name and port number");
-			}
-			String machine = args[0];
-			int port = Integer.parseInt(args[1]);
-			Socket client_sock = new Socket(machine,port);
-			DataOutputStream dout=new DataOutputStream(client_sock.getOutputStream()); 
-			DataInputStream din=new DataInputStream(client_sock.getInputStream());  
+			// Normal client socket
+			Socket nSocket = new Socket(machine, nPort);
+			DataOutputStream nDataOut = new DataOutputStream(nSocket.getOutputStream());
+			DataInputStream nDataIn  = new DataInputStream(nSocket.getInputStream());
+
+			// Terminate client socket
+            Socket tSocket = new Socket(machine, tPort);
+			DataInputStream tDataIn = new DataInputStream(tSocket.getInputStream());
+
 			String cmd = "";
-			String prompt = "myftp>";
+			final String prompt = "myftp>";
+
 			while(!cmd.equals("quit")) {
 				System.out.print(prompt + " ");
 				cmd = in.nextLine();
 				System.out.println();
 				if(cmd.equals("ls") || cmd.equals("pwd") || cmd.indexOf("mkdir") == 0 || cmd.indexOf("cd") == 0) {
-					dout.writeUTF(cmd);  
-					dout.flush();  
-					System.out.println(din.readUTF());
-				}
-
-
-
-				else if(cmd.indexOf("get") != -1) {
+					nDataOut.writeUTF(cmd);
+					nDataOut.flush();
+					System.out.println(nDataIn.readUTF());
+				} else if(cmd.indexOf("get") != -1) {
 					dout.writeUTF(cmd);  
 					dout.flush();  
 					String response = din.readUTF();
@@ -63,7 +67,7 @@ public class myftp {
 				}
 
 
-				else if(cmd.indexOf("put") != -1) {			//check if the file is in the local directory
+				else if(cmd.indexOf("put ") != -1) {			//check if the file is in the local directory
 					String filename=cmd.substring(cmd.indexOf(" ")+1);
 					File dir=new File(".");
 					File[] file_list=dir.listFiles();
@@ -98,6 +102,7 @@ public class myftp {
 
 				//delete works fine now
 				else if(cmd.indexOf("delete")!=-1) { //need to check if the file is found
+					
 					dout.writeUTF(cmd);
 					dout.flush();
 					String response=din.readUTF();
