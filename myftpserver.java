@@ -130,7 +130,7 @@ public class myftpserver {
 					/*
 					 * Accept file from client via DataInputStream.
 					 */
-					String filename = cmd.substring(cmd.indexOf(" ")+1);
+					String filename = pwd + '/' + cmd.substring(cmd.indexOf(" ")+1);
 					System.out.println(filename);
 					FileOutputStream fos = new FileOutputStream(filename);
 					int bytes = 0;
