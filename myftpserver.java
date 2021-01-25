@@ -9,18 +9,27 @@ import java.net.Socket;
 import java.util.Arrays;
 import java.math.*;
 
+/*
+ * CSCI 4780 Project 1: Simple FTP Server File
+ * Authors: Josh Messitte, Alex Holmes, Robert Urquhart
+ * This class implements the server side of a simple file transport program.
+ */
+
 public class myftpserver {
 
 	public static void main(String[] args) {
 
 		try {
 
+			// maintain the current working directory
 			String pwd = new File(".").getCanonicalPath();
 
+			// check included arguments
 			if (args.length == 0){
 				System.out.println("[ERR] Include port number argument");
 				System.exit(0);
 			}
+			// listen for connections
 			int port = Integer.parseInt(args[0]);
 			ServerSocket server_sock = new ServerSocket(port);
 			System.out.println("Server Listening...");
@@ -28,6 +37,7 @@ public class myftpserver {
 			System.out.println("Connection Established.");
 			String cmd = "";
 
+			// accept client commands
 			while(!cmd.equals("quit")) {
 				DataInputStream dis=new DataInputStream(client_sock.getInputStream());  
 				DataOutputStream dos = new DataOutputStream(client_sock.getOutputStream());
@@ -35,7 +45,9 @@ public class myftpserver {
 
 
 				if(cmd.equals("ls")) {
-					//list all files in pwd
+					/*
+					 * List all files in pwd
+					 */
 					File dir = new File(pwd);
 					File[] file_list = dir.listFiles();
 					String files ="";
@@ -47,7 +59,9 @@ public class myftpserver {
 					dos.flush();
 
 				}else if(cmd.equals("pwd")){
-					//get the name of the current directory where the server resides
+					/*
+					 * Get the name of the current directory where the server resides.
+					 */
 					dos.writeUTF(pwd);
 					dos.flush();
 				}else if(cmd.indexOf("mkdir") != -1){
@@ -58,8 +72,10 @@ public class myftpserver {
 					dos.writeUTF("");
 					dos.flush();
 				}
-
 				else if(cmd.indexOf("get")!= -1){
+					/*
+					 * Send specified file back to client via DataOutputStream.
+					 */
 					boolean exists = false;
 					String filename = cmd.substring(cmd.indexOf(" ")+1);
 					File dir = new File(pwd);
@@ -89,18 +105,21 @@ public class myftpserver {
 						dos.flush();
 					}
 				}
-
 				else if(cmd.indexOf("cd") != -1){
-					//change the present working directory
+					/*
+					 * Change the present working directory.
+					 */
 					String dirname = cmd.substring(cmd.indexOf(" ")+1);
 
 					if(dirname.equals("..")) {
-					        int index = pwd.lastIndexOf('/');
+						// client wants to navigate to parent directory
+					    int index = pwd.lastIndexOf('/');
 						pwd = pwd.substring(0,index);
 						File directory = new File(pwd).getAbsoluteFile();
 						dos.writeUTF("changing working directory to "+directory.getAbsolutePath());
 						System.setProperty("user.dir", directory.getAbsolutePath());
 					}else {
+						// client specified the directory
 						pwd = pwd + "/" + dirname;
 						File directory = new File(pwd).getAbsoluteFile();
 						dos.writeUTF("changing working directory to "+directory.getAbsolutePath());
@@ -108,6 +127,9 @@ public class myftpserver {
 					}
 
 				}else if(cmd.indexOf("put ")!= -1){
+					/*
+					 * Accept file from client via DataInputStream.
+					 */
 					String filename = cmd.substring(cmd.indexOf(" ")+1);
 					System.out.println(filename);
 					FileOutputStream fos = new FileOutputStream(filename);
@@ -121,7 +143,11 @@ public class myftpserver {
 					fos.close();
 				}
 
+				
 				else if(cmd.indexOf("delete")!=-1) { //check if file exists in directory first 
+					/*
+					 * Remove specified file from the server's directory.
+					 */
 					boolean exists=false;
 					String filename=cmd.substring(cmd.indexOf(" ")+1);
 					File dir=new File(pwd);

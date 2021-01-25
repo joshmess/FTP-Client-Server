@@ -8,6 +8,13 @@ import java.net.Socket;
 import java.util.*;
 import java.math.*;
 
+
+/*
+ * CSCI 4780 Project 1: Simple FTP Client File
+ * Authors: Josh Messitte, Alex Holmes, Robert Urquhart
+ * This class implements the client side of a simple file transport program.
+ */
+
 public class myftp {
 
 	public static void main(String[] args) {
@@ -30,13 +37,18 @@ public class myftp {
 				cmd = in.nextLine();
 				System.out.println();
 				if(cmd.equals("ls") || cmd.equals("pwd") || cmd.indexOf("mkdir") == 0 || cmd.indexOf("cd") == 0) {
+					/*
+					 * Uniform process for sending pwd, mkdir, and cd
+					 */
 					dout.writeUTF(cmd);  
 					dout.flush();  
 					System.out.println(din.readUTF());
 				}
 
-
 				else if(cmd.indexOf("get") != -1) {
+					/*
+					 * Retrieve file from server.
+					 */
 					dout.writeUTF(cmd);  
 					dout.flush();  
 					String response = din.readUTF();
@@ -60,9 +72,10 @@ public class myftp {
 
 					}
 				}
-
-
 				else if(cmd.indexOf("put ") != -1) {			//check if the file is in the local directory
+					/*
+					 * Copy a file to the server.
+					 */
 					String filename=cmd.substring(cmd.indexOf(" ")+1);
 					File dir=new File(".");
 					File[] file_list=dir.listFiles();
@@ -97,7 +110,9 @@ public class myftp {
 
 				//delete works fine now
 				else if(cmd.indexOf("delete")!=-1) { //need to check if the file is found
-					
+					/*
+					 * Delete file from server.
+					 */
 					dout.writeUTF(cmd);
 					dout.flush();
 					String response=din.readUTF();
