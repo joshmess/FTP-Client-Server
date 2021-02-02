@@ -7,132 +7,131 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Arrays;
-import java.math.*;
 
 /*
  * CSCI 4780 Project 1: Simple FTP Server File
  * Authors: Josh Messitte, Alex Holmes, Robert Urquhart
  * This class implements the server side of a simple file transport program.
  */
-
 public class myftpserver {
 
 	public static void main(String[] args) {
+		// Check included arguments
+		if (args.length == 0){
+			System.out.println("[ERR] Include port number argument");
+			System.exit(0);
+		}
 
 		try {
 
-			// maintain the current working directory
-			String pwd = new File(".").getCanonicalPath();
-
-			// check included arguments
-			if (args.length == 0){
-				System.out.println("[ERR] Include port number argument");
-				System.exit(0);
-			}
-			// listen for connections
+			// Listen for connections
 			int port = Integer.parseInt(args[0]);
 			ServerSocket server_sock = new ServerSocket(port);
 			System.out.println("Server Listening...");
 			Socket client_sock = server_sock.accept();
 			System.out.println("Connection Established.");
+
+			DataInputStream dis = new DataInputStream(client_sock.getInputStream());
+			DataOutputStream dos = new DataOutputStream(client_sock.getOutputStream());
+
+			// Maintain the current working directory
+			File pwd = new File(".");
 			String cmd = "";
 
-			// accept client commands
+			// Accept client commands
 			while(!cmd.equals("quit")) {
-				DataInputStream dis=new DataInputStream(client_sock.getInputStream());  
-				DataOutputStream dos = new DataOutputStream(client_sock.getOutputStream());
-				cmd=(String)dis.readUTF();  
+				cmd = (String)dis.readUTF();
 
-
-				if(cmd.equals("ls")) {
-					/*
+				if (cmd.equals("ls")) {
+				    /*
 					 * List all files in pwd
-					 */
-					File dir = new File(pwd);
-					File[] file_list = dir.listFiles();
-					String files ="";
+				     */
+					String files = "";
+					File[] file_list = pwd.listFiles();
 					Arrays.sort(file_list);
+
 					for(File f: file_list) {
 						files += f.getName() + " ";
 					}
+
 					dos.writeUTF(files);
 					dos.flush();
-
-				}else if(cmd.equals("pwd")){
+				} else if (cmd.equals("pwd")) {
 					/*
 					 * Get the name of the current directory where the server resides.
 					 */
-					dos.writeUTF(pwd);
+					dos.writeUTF(pwd.getCanonicalPath());
 					dos.flush();
-				}else if(cmd.indexOf("mkdir") != -1){
-					//create a directory in the present working directory
-					String dirname = cmd.substring(cmd.indexOf(" ")+1);
-					File f = new File(pwd+"/"+dirname);
+				} else if(cmd.indexOf("mkdir") != -1) {
+					/*
+					 * Creates a directory in the present working directory.
+					 */
+					String dirname = cmd.substring(cmd.indexOf(" ") + 1);
+					File f = new File(pwd, dirname);
 					f.mkdir();
+
 					dos.writeUTF("");
 					dos.flush();
-				}
-				else if(cmd.indexOf("get")!= -1){
+				} else if(cmd.indexOf("get")!= -1) {
 					/*
 					 * Send specified file back to client via DataOutputStream.
 					 */
 					boolean exists = false;
-					String filename = cmd.substring(cmd.indexOf(" ")+1);
-					File dir = new File(pwd);
-					File[] file_list = dir.listFiles();
-					for(File f: file_list) {
-						if(filename.equals(f.getName())) {
-							exists = true;
-							dos.writeUTF("FOUND");
+					String filename = cmd.substring(cmd.indexOf(" ") + 1);
+					File file = new File(pwd, filename);
+
+					if (file.exists()) {
+						dos.writeUTF("FOUND");
+
+						// Copy file here
+						FileInputStream fis = new FileInputStream(file);
+						int bytes = 0;
+						// Send file size
+						dos.writeLong(file.length());
+						// Send file in chunks
+						byte[] buffer = new byte[4*1024];
+						while ((bytes=fis.read(buffer))!=-1){
+							dos.write(buffer, 0, bytes);
 							dos.flush();
-							//copy file here
-							int bytes = 0;
-							File file = new File(filename);
-							FileInputStream fis = new FileInputStream(file);
-							//send file size
-							dos.writeLong(file.length());
-							//send file in chunks
-							byte[] buffer = new byte[4*1024];
-							while ((bytes=fis.read(buffer))!=-1){
-								dos.write(buffer,0,bytes);
-								dos.flush();
-							}
-							fis.close();
 						}
-					}
-					if(!exists) {
+						fis.close();
+					} else {
 						dos.writeUTF("UNFOUND");
-						dos.flush();
 					}
+
+					dos.flush();
 				}
-				else if(cmd.indexOf("cd") != -1){
+				else if (cmd.indexOf("cd") != -1){
 					/*
 					 * Change the present working directory.
 					 */
-					String dirname = cmd.substring(cmd.indexOf(" ")+1);
+					String dirname = cmd.substring(cmd.indexOf(" ") + 1);
 
 					if(dirname.equals("..")) {
-						// client wants to navigate to parent directory
-					    int index = pwd.lastIndexOf('/');
-						pwd = pwd.substring(0,index);
-						File directory = new File(pwd).getAbsoluteFile();
-						dos.writeUTF("changing working directory to "+directory.getAbsolutePath());
-						System.setProperty("user.dir", directory.getAbsolutePath());
-					}else {
-						// client specified the directory
-						pwd = pwd + "/" + dirname;
-						File directory = new File(pwd).getAbsoluteFile();
-						dos.writeUTF("changing working directory to "+directory.getAbsolutePath());
-						System.setProperty("user.dir", directory.getAbsolutePath());
-					}
+						// Navigate to parent directory
+						File parent = pwd.getParentFile();
 
-				}else if(cmd.indexOf("put ")!= -1){
+						// If already in root directory, will getParentFile() returns null.
+						if (parent != null) {
+							pwd = parent;
+						}
+					} else {
+						// TODO No such file message for client
+						// Navigate into specified directory
+						File child = new File(pwd, dirname);
+
+						if (child.exists()) {
+							pwd = child;
+						}
+					}
+				} else if (cmd.indexOf("put ") != -1){
 					/*
 					 * Accept file from client via DataInputStream.
 					 */
-					String filename = pwd + '/' + cmd.substring(cmd.indexOf(" ")+1);
-					System.out.println(filename);
-					FileOutputStream fos = new FileOutputStream(filename);
+					String filename = cmd.substring(cmd.indexOf(" ") + 1);
+					System.out.println(pwd.getCanonicalPath() + filename);
+
+					FileOutputStream fos = new FileOutputStream(new File(pwd, filename));
 					int bytes = 0;
 					long size = dis.readLong();   
 					byte[] buffer = new byte[4*1024];
@@ -140,44 +139,36 @@ public class myftpserver {
 						fos.write(buffer,0,bytes);
 						size -= bytes;     
 					}
-					fos.close();
-				}
 
-				
-				else if(cmd.indexOf("delete")!=-1) { //check if file exists in directory first 
+					fos.close();
+				} else if(cmd.indexOf("delete")!=-1) {
 					/*
 					 * Remove specified file from the server's directory.
 					 */
-					boolean exists=false;
-					String filename=cmd.substring(cmd.indexOf(" ")+1);
-					File dir=new File(pwd);
-					File[] file_list=dir.listFiles();
-					for(File f: file_list) {
-						if(filename.equals(f.getName())){ 
-							exists=true;
-							dos.writeUTF("FOUND");
-							dos.flush();
-							File file=new File(filename);
-							if(file.delete()) {
-								System.out.println("File "+filename+" deleted.");
-							}
-							else {
-								System.out.println("Failed to delete file "+filename);
-							}
-							break;
-						}
-					}
-					if(!exists) {
-						dos.writeUTF("UNFOUND");
-						dos.flush();
-					}
-				}else {
+					String filename = cmd.substring(cmd.indexOf(" ")+1);
+					File file = new File(pwd, filename);
 
-					//command not recognized
+					if (file.exists()) {
+						dos.writeUTF("FOUND");
+						if(file.delete()) {
+							System.out.println("File " + filename + " deleted.");
+						} else {
+							System.out.println("Failed to delete file " + filename);
+						}
+					} else {
+						dos.writeUTF("UNFOUND");
+					}
+
+					dos.flush();
+				} else {
+					/*
+					 * Command not recognized
+					 */
 					dos.writeUTF("");
 					dos.flush();
 				}
 			}
+
 			server_sock.close();  
 		} catch (IOException e) {
 			//e.printStackTrace();
