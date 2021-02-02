@@ -114,6 +114,11 @@ public class myftpserver {
 						// If already in root directory, will getParentFile() returns null.
 						if (parent != null) {
 							pwd = parent;
+							dos.writeUTF("changing working directory to "+ dirname);
+							dos.flush();
+						}else{
+							dos.writeUTF("Already in root directory.");
+							dos.flush();
 						}
 					} else {
 						// TODO No such file message for client
@@ -122,7 +127,13 @@ public class myftpserver {
 
 						if (child.exists()) {
 							pwd = child;
+							dos.writeUTF("changing working directory to "+ dirname);
+							dos.flush();
+						}else{
+							dos.writeUTF("Directory not found.");
+							dos.flush();
 						}
+						
 					}
 				} else if (cmd.indexOf("put ") != -1){
 					/*
