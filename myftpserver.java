@@ -12,6 +12,7 @@ import java.util.Arrays;
  * CSCI 4780 Project 1: Simple FTP Server File
  * Authors: Josh Messitte, Alex Holmes, Robert Urquhart
  * This class implements the server side of a simple file transport program.
+ * Spring 2021
  */
 public class myftpserver {
 

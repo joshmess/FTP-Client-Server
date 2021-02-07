@@ -13,6 +13,7 @@ import java.math.*;
  * CSCI 4780 Project 1: Simple FTP Client File
  * Authors: Josh Messitte, Alex Holmes, Robert Urquhart
  * This class implements the client side of a simple file transport program.
+ * Spring 2021
  */
 
 public class myftp {
