@@ -7,17 +7,16 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.*;
 
-public class myftp {
+public class SimpleFTP {
 
 	public static void main(String[] args) {
 		if(args.length != 3){
-			System.out.println("[ERR] Please include three arguments, machine name, normal port number, and terminate port number");
+			System.err.println("[ERR] Please include three arguments, machine name, normal port number, and terminate port number");
 		}
 
 		String machine = args[0];
 		int nPort = Integer.parseInt(args[1]);
 		int tPort = Integer.parseInt(args[2]);
-
 		Scanner in = new Scanner(System.in);
 
 		try {
@@ -42,8 +41,8 @@ public class myftp {
 					nDataOut.flush();
 					System.out.println(nDataIn.readUTF());
 				} else if(cmd.indexOf("get") != -1) {
-					dout.writeUTF(cmd);  
-					dout.flush();  
+					dout.writeUTF(cmd);
+					dout.flush();
 					String response = din.readUTF();
 					if(response.equals("FOUND")) {
 						//create file
@@ -51,11 +50,11 @@ public class myftp {
 						int bytes = 0;
 						FileOutputStream fos = new FileOutputStream(newf);
 
-						long size = din.readLong();     
+						long size = din.readLong();
 						byte[] buffer = new byte[4*1024];
 						while (size > 0 && (bytes = din.read(buffer, 0, (int)Math.min(buffer.length, size))) != -1) {
 							fos.write(buffer,0,bytes);
-							size -= bytes;     
+							size -= bytes;
 						}
 						fos.close();
 						System.out.println("File "+newf+" downloaded from remote directory.");
@@ -74,10 +73,10 @@ public class myftp {
 					boolean exists=false;
 					for(File f: file_list) {
 						if(filename.equals(f.getName())) {
-							
+
 							exists=true;
-							dout.writeUTF(cmd);  
-							dout.flush(); 
+							dout.writeUTF(cmd);
+							dout.flush();
 							int bytes=0;
 							File file = new File(filename);
 							FileInputStream fis = new FileInputStream(file);
@@ -96,13 +95,13 @@ public class myftp {
 					if(!exists) {
 						System.out.println("[ERR] File not found in local directory.");
 					}
-						
+
 				}
 
 
 				//delete works fine now
 				else if(cmd.indexOf("delete")!=-1) { //need to check if the file is found
-					
+
 					dout.writeUTF(cmd);
 					dout.flush();
 					String response=din.readUTF();
@@ -113,14 +112,14 @@ public class myftp {
 					else {							//file not found in the remote directory
 						System.out.println("[ERR] File not found.");
 					}
-					
+
 				}
 				else if(cmd.equals("quit")==false) {
 					System.out.println("[ERR] Unrecognized command!");
 				}
 			}
-			dout.close();  
-			client_sock.close();  
+			dout.close();
+			client_sock.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
