@@ -4,10 +4,10 @@ import java.io.IOException;
 import java.net.Socket;
 
 public class TerminateConnection implements Runnable{
-    Socket clientSocket;
-    ThreadPool threadPool;
-    DataInputStream dataInputStream;
-    DataOutputStream dataOutputStream;
+    private Socket clientSocket;
+    private ThreadPool threadPool;
+    private DataInputStream dataInputStream;
+    private DataOutputStream dataOutputStream;
 
     TerminateConnection(Socket clientSocket, ThreadPool threadPool) {
         this.clientSocket = clientSocket;

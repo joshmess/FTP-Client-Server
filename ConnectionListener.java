@@ -16,8 +16,8 @@ class ConnectionListener implements Runnable {
         ListenerType(String name) { this.name = name; }
     }
 
-    int port;
-    ListenerType type;
+    private int port;
+    private ListenerType type;
 
     ConnectionListener(int nPort, ListenerType type) {
         port = nPort;

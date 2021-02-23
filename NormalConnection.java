@@ -9,11 +9,12 @@ import java.util.Arrays;
  * Normal FTP connection thread.
  */
 class NormalConnection implements Runnable {
-    Socket clientSocket;
-    ThreadPool threadPool;
-    DataInputStream dataInputStream;
-    DataOutputStream dataOutputStream;
-    File pwd;
+    private Socket clientSocket;
+    private ThreadPool threadPool;
+    private DataInputStream dataInputStream;
+    private DataOutputStream dataOutputStream;
+
+    private File pwd;
 
     NormalConnection(Socket clientSocket, ThreadPool threadPool) {
         this.clientSocket = clientSocket;
@@ -30,7 +31,7 @@ class NormalConnection implements Runnable {
     }
 
     private boolean processCommand() {
-        // TODO
+
         return true;
     }
 

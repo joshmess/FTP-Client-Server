@@ -1,6 +1,4 @@
 import java.net.Socket;
-import java.time.Duration;
-import java.time.Instant;
 
 public class Task {
     public enum TaskType {
@@ -10,14 +8,16 @@ public class Task {
 
     private static long idCounter = 0;
 
-    private TaskType taskType;
     private long ID;
+    private TaskType taskType;
+    private Socket clientSocket;
     private volatile boolean isTerminated;
 
-    public Task(TaskType taskType) {
+    public Task(TaskType taskType, Socket clientSocket) {
         this.ID = createID();
-        isTerminated = false;
+        this.clientSocket = clientSocket;
         this.taskType = taskType;
+        isTerminated = false;
     }
 
     /**
