@@ -13,9 +13,7 @@ class ConnectionListener implements Runnable {
 
         private final String name;
 
-        ListenerType(String name) {
-            this.name = name;
-        }
+        ListenerType(String name) { this.name = name; }
     }
 
     int port;
@@ -32,13 +30,14 @@ class ConnectionListener implements Runnable {
             ServerSocket serverSocket = new ServerSocket(port);
             System.out.printf("Listening on %s port...\n", type.name);
 
+            // Accepts incoming client connections and creates new thread to handle connection.
             while (true) {
                 try {
                     Socket clientSocket = serverSocket.accept();
                     if (type == ListenerType.NORMAL) {
-                        new NormalConnection(clientSocket);
+                        new NormalConnection(clientSocket, SimpleFTPServer.threadPool);
                     } else {
-                        new TerminateConnection(clientSocket);
+                        new TerminateConnection(clientSocket, SimpleFTPServer.threadPool);
                     }
                     System.out.printf("Connection established on %s port.\n", type.name);
                 } catch (IOException e) {

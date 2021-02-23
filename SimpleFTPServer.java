@@ -2,6 +2,7 @@ import java.io.*;
 import java.net.ServerSocket;
 
 public class SimpleFTPServer {
+	public static ThreadPool threadPool;
 
 	public static void main(String[] args) {
 		if (args.length != 2) {
@@ -11,16 +12,8 @@ public class SimpleFTPServer {
 
 		int nPort = Integer.parseInt(args[0]);
 		int tPort = Integer.parseInt(args[1]);
-		new NormalConnectionListener(nPort);
-
-		// Terminate port listener in main thread
-		try {
-			ServerSocket tServerSocket = new ServerSocket(tPort);
-			System.out.println("Listening on terminate port...");
-		} catch (IOException e) {
-			// TODO
-		}
-
-
+		threadPool = new ThreadPool(null);
+		new ConnectionListener(nPort, ConnectionListener.ListenerType.NORMAL);
+		new ConnectionListener(tPort, ConnectionListener.ListenerType.TERMINATE);
 	}
 }

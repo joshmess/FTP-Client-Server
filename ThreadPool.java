@@ -1,5 +1,6 @@
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.NoSuchElementException;
 import java.util.Queue;
 
 public class ThreadPool implements Runnable {
@@ -10,7 +11,7 @@ public class ThreadPool implements Runnable {
 
     ThreadPool(Integer numThreads) {
         if (numThreads == null) {
-            // Threadpool has minimum of 2 threads
+            // ThreadPool has minimum of 2 threads
             this.numThreads = Math.max(Runtime.getRuntime().availableProcessors(), 2);
         } else {
             this.numThreads = numThreads;
@@ -41,12 +42,14 @@ public class ThreadPool implements Runnable {
         }
     }
 
-    public void terminateTask(long ID) {
+    public boolean terminateTask(long ID) {
         synchronized (this) {
             Task task = terminateMap.get(ID);
             if (task != null) {
                 task.terminate();
+                return true;
             }
+            return false;
         }
     }
 
