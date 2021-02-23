@@ -1,6 +1,6 @@
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.NoSuchElementException;
 import java.util.Queue;
 
 public class ThreadPool implements Runnable {
@@ -8,14 +8,19 @@ public class ThreadPool implements Runnable {
     private ArrayList<Worker> pool;
     private volatile Queue<Task> tasks;
     private volatile HashMap<Long, Task> terminateMap;
+    private Thread callingThread;
 
-    ThreadPool(Integer numThreads) {
+    ThreadPool(Integer numThreads, Thread callingThread) {
         if (numThreads == null) {
             // ThreadPool has minimum of 2 threads
             this.numThreads = Math.max(Runtime.getRuntime().availableProcessors(), 2);
         } else {
             this.numThreads = numThreads;
         }
+        pool = new ArrayList<>();
+        tasks = new ArrayDeque<>();
+        terminateMap = new HashMap<>();
+        this.callingThread = callingThread;
     }
 
     /**
@@ -69,5 +74,7 @@ public class ThreadPool implements Runnable {
         for (int i = 0; i < numThreads; i++) {
             pool.add(new Worker(i, this));
         }
+        // Calling thread waits until ThreadPool is initialized before accepting connections
+        callingThread.notify();
     }
 }
