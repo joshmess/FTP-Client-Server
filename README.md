@@ -12,10 +12,10 @@ $ javac myftpserver.java
 
 ### Run Client:
 ```
-$ java myftp [MACHINE_NAME] [PORT]
+$ java myftp [MACHINE_NAME] [nPORT] [tPORT]
 ```
 
 ### Run Server:
 ```
-$ java myftpserver [PORT]
+$ java myftpserver [nPORT] [tPORT]
 ```
