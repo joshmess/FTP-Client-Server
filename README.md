@@ -1,5 +1,5 @@
 # simple-ftp project
-Josh Messitte, Alex Holmes, Robert
+Josh Messitte, Alex Holmes, Robert Urquhart
 
 ### Compile Client:
 ```
