@@ -3,14 +3,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Queue;
 
-public class ThreadPool implements Runnable {
+public class ThreadPool {
     private Integer numThreads;
     private ArrayList<Worker> pool;
     private volatile Queue<Task> tasks;
     private volatile HashMap<Long, Task> terminateMap;
-    private Thread callingThread;
+    // TODO Need to fix locks on hashmap and queue. Must share a lock for adding and removing objects from them.
 
-    ThreadPool(Integer numThreads, Thread callingThread) {
+    ThreadPool(Integer numThreads) {
         if (numThreads == null) {
             // ThreadPool has minimum of 2 threads
             this.numThreads = Math.max(Runtime.getRuntime().availableProcessors(), 2);
@@ -20,7 +20,11 @@ public class ThreadPool implements Runnable {
         pool = new ArrayList<>();
         tasks = new ArrayDeque<>();
         terminateMap = new HashMap<>();
-        this.callingThread = callingThread;
+
+        // Populate worker pool
+        for (int i = 0; i < numThreads; i++) {
+            pool.add(new Worker(i, this));
+        }
     }
 
     /**
@@ -47,6 +51,11 @@ public class ThreadPool implements Runnable {
         }
     }
 
+    /**
+     * Sets a task to terminate and returns true if a valid task ID was given.
+     * @param ID unique task identifier
+     * @return true if task ID was valid
+     */
     public boolean terminateTask(long ID) {
         synchronized (this) {
             Task task = terminateMap.get(ID);
@@ -67,14 +76,5 @@ public class ThreadPool implements Runnable {
         synchronized (this) {
             terminateMap.remove(task.getID());
         }
-    }
-
-    @Override
-    public void run() {
-        for (int i = 0; i < numThreads; i++) {
-            pool.add(new Worker(i, this));
-        }
-        // Calling thread waits until ThreadPool is initialized before accepting connections
-        callingThread.notify();
     }
 }

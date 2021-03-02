@@ -1,8 +1,3 @@
-import sun.applet.Main;
-
-import java.io.*;
-import java.net.ServerSocket;
-
 public class SimpleFTPServer {
 	public static ThreadPool threadPool;
 
@@ -14,14 +9,9 @@ public class SimpleFTPServer {
 
 		int nPort = Integer.parseInt(args[0]);
 		int tPort = Integer.parseInt(args[1]);
-		threadPool = new ThreadPool(null, Thread.currentThread());
 
-		// Wait until ThreadPool is initialized
-		Main m = new Main();
-		synchronized (m) {
-			m.wait();
-		}
-
+		// Must begin threadpool before connection listeners
+		threadPool = new ThreadPool(null);
 		new ConnectionListener(nPort, ConnectionListener.ListenerType.NORMAL);
 		new ConnectionListener(tPort, ConnectionListener.ListenerType.TERMINATE);
 	}
