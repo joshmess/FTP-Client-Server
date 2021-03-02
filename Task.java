@@ -1,22 +1,20 @@
+import java.io.File;
 import java.net.Socket;
 
 public class Task {
-    public enum TaskType {
-        GET,
-        PUT,
-    }
-
     private static long idCounter = 0;
 
     private long ID;
     private TaskType taskType;
     private Socket clientSocket;
+    private File file;
     private volatile boolean isTerminated;
 
-    public Task(TaskType taskType, Socket clientSocket) {
+    public Task(TaskType taskType, Socket clientSocket, File file) {
         this.ID = createID();
         this.clientSocket = clientSocket;
         this.taskType = taskType;
+        this.file = file;
         isTerminated = false;
     }
 
