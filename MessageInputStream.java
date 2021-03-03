@@ -6,6 +6,10 @@ public class MessageInputStream extends ObjectInputStream {
     public MessageInputStream(InputStream inputStream) throws IOException {
         super(inputStream);
     }
+    
+    public synchronized Message readMessage() throws IOException {
+           return readObject();
+}
 
     // TODO
 }
