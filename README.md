@@ -1,5 +1,5 @@
 # simple-ftp project
-Josh Messitte, Alex Holmes, Robert
+Josh Messitte, Alex Holmes, Robert Urquhart
 
 ### Compile Client:
 ```
@@ -12,10 +12,10 @@ $ javac myftpserver.java
 
 ### Run Client:
 ```
-$ java myftp [MACHINE_NAME] [PORT]
+$ java myftp [MACHINE_NAME] [nPORT] [tPORT]
 ```
 
 ### Run Server:
 ```
-$ java myftpserver [PORT]
+$ java myftpserver [nPORT] [tPORT]
 ```
