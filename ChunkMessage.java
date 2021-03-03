@@ -1,11 +1,8 @@
-import java.io.File;
-import java.io.Serializable;
-
 /**
  * A serializable file chunk message that is used because commands and file chunks may be
  * sent on the same i/o stream and must be differentiated.
  */
-public class ChunkMessage implements Serializable {
+public class ChunkMessage implements Message {
     private CommandMessage command;
     private char[] buffer;
 

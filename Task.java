@@ -8,13 +8,15 @@ public class Task {
     private TaskType taskType;
     private Socket clientSocket;
     private File file;
+    private NormalConnection connection;
     private volatile boolean isTerminated;
 
-    public Task(TaskType taskType, Socket clientSocket, File file) {
+    public Task(TaskType taskType, Socket clientSocket, File file, NormalConnection connection) {
         this.ID = createID();
         this.clientSocket = clientSocket;
         this.taskType = taskType;
         this.file = file;
+        this.connection = connection;
         isTerminated = false;
     }
 

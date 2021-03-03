@@ -3,7 +3,7 @@ public class SimpleFTPServer {
 
 	public static void main(String[] args) throws InterruptedException {
 		if (args.length != 2) {
-			System.err.println("[ERR] Include two port number arguments");
+			System.err.println("[ERROR] Include two port number arguments");
 			System.exit(0);
 		}
 

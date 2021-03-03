@@ -5,7 +5,7 @@ import java.io.Serializable;
  * A serializable command message that is used because commands and file chunks may be
  * sent on the same i/o stream and must be differentiated.
  */
-public class CommandMessage implements Serializable {
+public class CommandMessage implements Message {
     private TaskType command;
     private String fileName;
 

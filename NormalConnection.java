@@ -3,7 +3,9 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
-import java.util.Arrays;
+import java.util.ArrayDeque;
+import java.util.PriorityQueue;
+import java.util.Queue;
 
 /**
  * Normal FTP connection thread.
@@ -13,12 +15,13 @@ class NormalConnection implements Runnable {
     private ThreadPool threadPool;
     private DataInputStream dataInputStream;
     private DataOutputStream dataOutputStream;
-
+    private volatile Queue<> broadcastQueue;
     private File pwd;
 
     NormalConnection(Socket clientSocket, ThreadPool threadPool) {
         this.clientSocket = clientSocket;
         this.threadPool = threadPool;
+        this.broadcastQueue = new PriorityQueue<>();
         pwd = new File(".");
         try {
             dataInputStream = new DataInputStream(clientSocket.getInputStream());
@@ -27,10 +30,11 @@ class NormalConnection implements Runnable {
             // TODO How to handle? How client should react if no input/output stream created?
         }
 
-        System.out.println("Creating thread: Normal Port Connection");
+        System.out.println("[Normal Port]: New connection.");
     }
 
     private boolean processCommand() {
+        // TODO
 
         return true;
     }

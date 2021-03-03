@@ -68,8 +68,9 @@ public class ThreadPool {
     }
 
     /**
-     * Remove a task from the terminateMap once task is completed by worker thread. Terminated tasks will continue to
-     * run cleanup in the worker thread, and then is removed from the terminateMap.
+     * Remove a task from the terminateMap once task is completed by worker thread.
+     * Terminated tasks will continue to run cleanup in the worker thread, and then is
+     * removed from the terminateMap.
      * @param task a blocking task
      */
     public void removeTask(Task task) {
