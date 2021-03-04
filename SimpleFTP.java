@@ -1,6 +1,4 @@
-import java.io.DataOutputStream;
-import java.io.DataInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
 import java.util.*;
 
@@ -10,20 +8,22 @@ public class SimpleFTP {
 
 	private String machine;
 	private Socket nSocket;
-	private MessageInputStream inputStream;
-	private MessageOutputStream outputStream;
+	private ObjectInputStream inputStream;
+	private ObjectOutputStream outputStream;
 	private Scanner sc;
 	private int tPort;
+	private FileLocks fileLocks;
 
 	public SimpleFTP(String machine, int nPort, int tPort) {
 		this.tPort = tPort;
 		this.machine = machine;
 		this.sc = new Scanner(System.in);
+		this.fileLocks = new FileLocks();
 		try {
 			// Normal client socket
 			nSocket = new Socket(machine, nPort);
-			inputStream = new MessageInputStream(nSocket.getInputStream());
-			outputStream = new MessageOutputStream(nSocket.getOutputStream());
+			inputStream = new ObjectInputStream(nSocket.getInputStream());
+			outputStream = new ObjectOutputStream(nSocket.getOutputStream());
 		} catch(IOException e) {
 			System.out.println("[ERROR] Unable to connect to server. Aborting...");
 		}
@@ -53,10 +53,14 @@ public class SimpleFTP {
 
 	}
 
+	private boolean put(String fileName) {
+
+	}
+
 	private void writeCommand(TaskType taskType) {
 		CommandMessage message = new CommandMessage(taskType);
 		try {
-			outputStream.writeMessage(message);
+			outputStream.writeObject(message);
 		} catch (IOException e) {
 			System.out.println("[ERROR] Unable to send " + taskType.name() + " command.");
 		}
@@ -65,9 +69,22 @@ public class SimpleFTP {
 	private void writeCommand(TaskType taskType, String fileName) {
 		CommandMessage message = new CommandMessage(taskType, fileName);
 		try {
-			outputStream.writeMessage(message);
+			outputStream.writeObject(message);
 		} catch (IOException e) {
 			System.out.println("[ERROR] Unable to send " + taskType.name() + " command.");
+		}
+	}
+
+	private void readResponse() {
+		String response = null;
+	    try {
+			response = (String) inputStream.readObject();
+		} catch (IOException e) {
+			System.out.println("[ERROR] Unable to receive command response.");
+		} catch (ClassNotFoundException e) { }
+
+	    if (response != null) {
+			System.out.println(response);
 		}
 	}
 
@@ -80,32 +97,41 @@ public class SimpleFTP {
 		while(!cmd.equals("quit")) {
 			if (cmd.equals("ls")) {
 			    writeCommand(TaskType.LS);
-
+			    readResponse();
 			} else if (cmd.equals("pwd")) {
 				writeCommand(TaskType.PWD);
-
+				readResponse();
 			} else if (cmd.startsWith("mkdir")) {
 				writeCommand(TaskType.MKDIR, cmd.substring(cmd.indexOf(" ") + 1));
-
+				readResponse();
 			} else if (cmd.startsWith("cd")) {
 				writeCommand(TaskType.CD, cmd.substring(cmd.indexOf(" ") + 1));
-
+				readResponse();
 			} else if (cmd.startsWith("get")) {
+				final String fileName = cmd.substring(cmd.indexOf(" ") + 1);
 				if (cmd.endsWith("&")) {
+					Runnable task = () -> {
+						get(fileName);
+					};
 
+					new Thread(task).start();
 				} else {
-					writeCommand(TaskType.GET, cmd.substring(cmd.indexOf(" ") + 1));
-
+				    get(fileName);
 				}
 			} else if (cmd.startsWith("put")) {
+				final String fileName = cmd.substring(cmd.indexOf(" ") + 1);
 				if (cmd.endsWith("&")) {
+					Runnable task = () -> {
+						put(fileName);
+					};
 
+					new Thread(task).start();
 				} else {
-					writeCommand(TaskType.PUT, cmd.substring(cmd.indexOf(" ") + 1));
+				    put(fileName);
 				}
 			} else if (cmd.startsWith("delete")) {
 				writeCommand(TaskType.DELETE, cmd.substring(cmd.indexOf(" ") + 1));
-
+				readResponse();
 			} else if (cmd.startsWith("terminate")) {
 				terminate(Long.parseLong(cmd.substring(cmd.indexOf(" ") + 1)));
 			} else {

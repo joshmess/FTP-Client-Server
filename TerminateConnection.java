@@ -12,17 +12,18 @@ import java.net.Socket;
  */
 public class TerminateConnection implements Runnable {
     private Socket clientSocket;
-    private ThreadPool threadPool;
     private DataInputStream dataInputStream;
     private DataOutputStream dataOutputStream;
+    private TaskTable taskTable;
     private boolean exitThread;
 
-    TerminateConnection(Socket clientSocket, ThreadPool threadPool) {
+    TerminateConnection(Socket clientSocket, TaskTable taskTable) {
         System.out.println("[Terminate Port]: New connection.");
 
         this.clientSocket = clientSocket;
-        this.threadPool = threadPool;
+        this.taskTable = taskTable;
         exitThread = false;
+
         try {
             dataInputStream = new DataInputStream(clientSocket.getInputStream());
             dataOutputStream = new DataOutputStream(clientSocket.getOutputStream());
@@ -49,7 +50,7 @@ public class TerminateConnection implements Runnable {
             long commandID = dataInputStream.readLong();
 
             // Terminate task and send success to client.
-            dataOutputStream.writeBoolean(threadPool.terminateTask(commandID));
+            dataOutputStream.writeBoolean(taskTable.terminateTask(commandID));
             dataOutputStream.flush();
         } catch (IOException e) {
             System.err.println("[ERROR] Unable to read stream from terminate port connection. Aborting connection...");
