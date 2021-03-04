@@ -1,4 +1,3 @@
-import java.io.File;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -17,8 +16,8 @@ class ConnectionListener implements Runnable {
         ListenerType(String name) { this.name = name; }
     }
 
-    private static FileLocks fileLocks;
-    private static TaskTable taskTable;
+    private static FileLocks fileLocks = new FileLocks();
+    private static TaskTable taskTable = new TaskTable();
 
     private int port;
     private ListenerType type;
@@ -39,9 +38,9 @@ class ConnectionListener implements Runnable {
                 try {
                     Socket clientSocket = serverSocket.accept();
                     if (type == ListenerType.NORMAL) {
-                        new NormalConnection(clientSocket, new File("."), fileLocks, taskTable);
+                        new NormalConnection(clientSocket, fileLocks, taskTable);
                     } else {
-                        new TerminateConnection(clientSocket);
+                        new TerminateConnection(clientSocket, taskTable);
                     }
                     System.out.printf("Connection established on %s port.\n", type.name);
                 } catch (IOException e) {

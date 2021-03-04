@@ -26,9 +26,8 @@ public class SimpleFTP {
 			outputStream = new ObjectOutputStream(nSocket.getOutputStream());
 		} catch(IOException e) {
 			System.out.println("[ERROR] Unable to connect to server. Aborting...");
+			System.exit(1);
 		}
-
-		run();
 	}
 
 	private boolean terminate(long ID) {
@@ -48,44 +47,52 @@ public class SimpleFTP {
 		}
 	}
 
-	private boolean get(String fileName) {
-		CommandMessage message = new CommandMessage(TaskType.GET, fileName);
+	private void get(String fileName) {
+		writeCommand(TaskType.GET, fileName);
 
 	}
 
-	private boolean put(String fileName) {
+	private void getThread(String fileName) {
+
+	}
+
+	private void put(String fileName) {
+		writeCommand(TaskType.PUT, fileName);
+
+	}
+
+	private void putThread (String fileName) {
 
 	}
 
 	private void writeCommand(TaskType taskType) {
-		CommandMessage message = new CommandMessage(taskType);
 		try {
-			outputStream.writeObject(message);
+			outputStream.writeObject(taskType);
+			outputStream.flush();
 		} catch (IOException e) {
 			System.out.println("[ERROR] Unable to send " + taskType.name() + " command.");
 		}
 	}
 
 	private void writeCommand(TaskType taskType, String fileName) {
-		CommandMessage message = new CommandMessage(taskType, fileName);
 		try {
-			outputStream.writeObject(message);
+			outputStream.writeObject(taskType);
+			outputStream.writeObject(fileName);
+			outputStream.flush();
 		} catch (IOException e) {
 			System.out.println("[ERROR] Unable to send " + taskType.name() + " command.");
 		}
 	}
 
-	private void readResponse() {
-		String response = null;
+	private String readResponse() {
+		String response = "";
 	    try {
 			response = (String) inputStream.readObject();
 		} catch (IOException e) {
 			System.out.println("[ERROR] Unable to receive command response.");
 		} catch (ClassNotFoundException e) { }
 
-	    if (response != null) {
-			System.out.println(response);
-		}
+	    return response;
 	}
 
 	private void run() {
@@ -97,21 +104,21 @@ public class SimpleFTP {
 		while(!cmd.equals("quit")) {
 			if (cmd.equals("ls")) {
 			    writeCommand(TaskType.LS);
-			    readResponse();
+				System.out.println(readResponse());
 			} else if (cmd.equals("pwd")) {
 				writeCommand(TaskType.PWD);
-				readResponse();
+				System.out.println(readResponse());
 			} else if (cmd.startsWith("mkdir")) {
 				writeCommand(TaskType.MKDIR, cmd.substring(cmd.indexOf(" ") + 1));
-				readResponse();
+				System.out.println(readResponse());
 			} else if (cmd.startsWith("cd")) {
 				writeCommand(TaskType.CD, cmd.substring(cmd.indexOf(" ") + 1));
-				readResponse();
+				System.out.println(readResponse());
 			} else if (cmd.startsWith("get")) {
 				final String fileName = cmd.substring(cmd.indexOf(" ") + 1);
 				if (cmd.endsWith("&")) {
 					Runnable task = () -> {
-						get(fileName);
+						getThread(fileName);
 					};
 
 					new Thread(task).start();
@@ -122,7 +129,7 @@ public class SimpleFTP {
 				final String fileName = cmd.substring(cmd.indexOf(" ") + 1);
 				if (cmd.endsWith("&")) {
 					Runnable task = () -> {
-						put(fileName);
+						putThread(fileName);
 					};
 
 					new Thread(task).start();
@@ -143,6 +150,16 @@ public class SimpleFTP {
 			cmd = sc.nextLine().trim();
 			System.out.println();
 		}
+
+		// Exit server
+		writeCommand(TaskType.QUIT);
+
+		// Cleanup
+        try {
+			nSocket.close();
+			inputStream.close();
+			outputStream.close();
+		} catch (IOException e) { }
 	}
 
 	public static void main(String[] args) {
@@ -154,6 +171,6 @@ public class SimpleFTP {
 		int nPort = Integer.parseInt(args[1]);
 		int tPort = Integer.parseInt(args[2]);
 
-		new SimpleFTP(machine, nPort, tPort);
+		new SimpleFTP(machine, nPort, tPort).run();
 	}
 }

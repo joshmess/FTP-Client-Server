@@ -1,7 +1,6 @@
 import java.io.*;
 import java.net.Socket;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Arrays;
 
 /**
  * Normal FTP connection thread.
@@ -17,13 +16,13 @@ class NormalConnection implements Runnable {
     private TaskTable taskTable;
     private volatile boolean exitThread;
 
-    NormalConnection(Socket clientSocket, File pwd, FileLocks fileLocks, TaskTable taskTable) {
+    NormalConnection(Socket clientSocket, FileLocks fileLocks, TaskTable taskTable) {
         System.out.println("[Normal Port]: New connection.");
 
         this.clientSocket = clientSocket;
         this.fileLocks = fileLocks;
         this.taskTable = taskTable;
-        this.pwd = pwd;
+        this.pwd = new File(".");
         exitThread = false;
 
         try {
@@ -31,7 +30,7 @@ class NormalConnection implements Runnable {
             outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
         } catch (IOException e) {
             System.err.println("[ERROR]: Unable to create i/o streams with client on" +
-                    "TERMINATE PORT! Closing connection.");
+                    "NORMAL PORT! Closing connection.");
             exitThread = true;
 
             // Closes input stream if output stream throws exception when created
@@ -43,11 +42,96 @@ class NormalConnection implements Runnable {
         }
     }
 
+    private void writeResponse(String response) {
+        try {
+            outputStream.writeObject(response);
+            outputStream.flush();
+        } catch (IOException e) {
+            System.err.println("[ERROR] Unable to send response to client.");
+        }
+    }
+
     private boolean processCommand() {
+        TaskType command = null;
+        String fileName = null;
+        try {
+            command = (TaskType) inputStream.readObject();
 
-        if ()
+            if (inputStream.available() != 0) {
+                fileName = (String) inputStream.readObject();
+            }
+        } catch (IOException e) {
+            // TODO handle non-empty input stream
+            return true;
+        } catch (ClassNotFoundException e) { }
 
-        return true;
+        if (command == TaskType.QUIT) {
+            taskTable.terminateAll();
+            return false;
+        }
+
+        String response = "";
+        switch (command) {
+            case LS:
+                File[] fileList = pwd.listFiles();
+                Arrays.sort(fileList);
+
+                for (File file: fileList) {
+                    response += file.getName() + " ";
+                }
+                break;
+            case PWD:
+                try {
+                    response = pwd.getCanonicalPath();
+                } catch (IOException e) {
+                    writeResponse("[ERROR] Unable to get present working directory.");
+                }
+                break;
+            case MKDIR:
+                File file = new File(pwd, fileName);
+                file.mkdir();
+                if (file.mkdir()) {
+                    response = "";
+                } else {
+                    response = "[ERROR] Unable to make directory.";
+                }
+                break;
+            case CD:
+                if (fileName.equals("..")) {
+                    File parent = pwd.getParentFile();
+
+                    // If already in root directory, getParentFile() returns null
+                    if (parent != null) {
+                        pwd = parent;
+                        response = "Changing working directory to " + fileName;
+                    } else {
+                        response = "Already in root directory.";
+                    }
+                } else {
+                    // Navigate into specified directory
+                    // TODO CHECK IF IS DIRECTORY
+                    File child = new File(pwd, fileName);
+
+                    if (child.exists()) {
+                        pwd = child;
+
+                    } else {
+
+                    }
+                }
+                break;
+            case GET:
+                break;
+            case PUT:
+                break;
+            case DELETE:
+                break;
+            default:
+                return false;
+        }
+
+        // Write response if command did not quit.
+        writeResponse(response);
     }
 
     /**
@@ -65,6 +149,9 @@ class NormalConnection implements Runnable {
         return idCounter++;
     }
 
+    /**
+     * Start connection thread.
+     */
     public void run() {
         if (!exitThread) {
             // Loops until quit command is received
