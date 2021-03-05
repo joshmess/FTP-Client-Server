@@ -3,19 +3,19 @@ Josh Messitte, Alex Holmes, Robert Urquhart
 
 ### Compile Client:
 ```
-$ javac myftp.java
+$ javac SimpleFTP.java
 ```
 ### Compile Server:
 ```
-$ javac myftpserver.java
+$ javac SimpleFTPServer.java
 ```
 
 ### Run Client:
 ```
-$ java myftp [MACHINE_NAME] [nPORT] [tPORT]
+$ java SimpleFTP [MACHINE_NAME] [nPORT] [tPORT]
 ```
 
 ### Run Server:
 ```
-$ java myftpserver [nPORT] [tPORT]
+$ java SimpleFTPServer [nPORT] [tPORT]
 ```
