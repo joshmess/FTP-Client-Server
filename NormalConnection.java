@@ -167,7 +167,7 @@ class NormalConnection implements Runnable {
 
                         // Send file chunks
                         byte[] buffer = new byte[1000];
-                        while ((bytes = fileInputStream.read(buffer)) != 1 && taskTable.isRunning(getID)) {
+                        while ((bytes = fileInputStream.read(buffer)) != -1 && taskTable.isRunning(getID)) {
                             outputStream.write(buffer, 0, bytes);
                             outputStream.flush();
                         }
