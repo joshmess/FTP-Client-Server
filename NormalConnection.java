@@ -97,7 +97,6 @@ class NormalConnection implements Runnable {
                 break;
             case MKDIR:
                 File file = new File(pwd, fileName);
-                file.mkdir();
                 if (file.mkdir()) {
                     response = "";
                 } else {
