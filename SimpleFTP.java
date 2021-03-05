@@ -141,7 +141,7 @@ public class SimpleFTP {
 				Thread.currentThread().sleep(2000);
 			} catch (InterruptedException e) { }
 		}
-		writeCommand(TaskType.GET, fileName);
+		writeCommand(TaskType.PUT, fileName);
 
 		// Get command ID
 		long ID;
