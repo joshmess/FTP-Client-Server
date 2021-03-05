@@ -92,7 +92,7 @@ class NormalConnection implements Runnable {
                 try {
                     response = pwd.getCanonicalPath();
                 } catch (IOException e) {
-                    writeResponse("[ERROR] Unable to get present working directory.");
+                    response = "[ERROR] Unable to get present working directory.";
                 }
                 break;
             case MKDIR:
@@ -119,7 +119,7 @@ class NormalConnection implements Runnable {
                     // Navigate into specified directory
                     File child = new File(pwd, fileName);
                     if (!child.isDirectory()) {
-                        response = fileName + " is not a directory!";
+                        writeResponse(fileName + " is not a directory!");
                         return true;
                     }
 
@@ -236,6 +236,7 @@ class NormalConnection implements Runnable {
                 new Thread(putTask).start();
                 break;
             case DELETE:
+
                 break;
         }
 
