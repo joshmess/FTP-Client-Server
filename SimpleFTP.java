@@ -13,12 +13,14 @@ public class SimpleFTP {
 	private Scanner sc;
 	private int tPort;
 	private FileLocks fileLocks;
+	private TaskTable taskTable;
 
 	public SimpleFTP(String machine, int nPort, int tPort) {
 		this.tPort = tPort;
 		this.machine = machine;
 		this.sc = new Scanner(System.in);
 		this.fileLocks = new FileLocks();
+		this.taskTable = new TaskTable();
 		try {
 			// Normal client socket
 			nSocket = new Socket(machine, nPort);
@@ -30,39 +32,148 @@ public class SimpleFTP {
 		}
 	}
 
-	private boolean terminate(long ID) {
-	    try {
+	private void terminate(long ID) {
+		try {
 			// Terminate client socket
 			Socket tSocket = new Socket(machine, tPort);
 			DataInputStream dataInputStream = new DataInputStream(tSocket.getInputStream());
 			DataOutputStream dataOutputStream = new DataOutputStream(tSocket.getOutputStream());
 
 			// Send command ID to server
-			// Receive true if command ID was valid
+			// Task may be finished on server and removed from server taskTable, but
+			// client may still be running. If not running on either, then task ID is
+			// invalid.
 			dataOutputStream.writeLong(ID);
-			return dataInputStream.readBoolean();
+			if (dataInputStream.readBoolean() || taskTable.terminateTask(ID)) {
+				System.out.println("Terminating task.");
+			} else {
+				System.out.println("Invalid task ID.");
+			}
 		} catch(IOException e) {
-			System.out.println("[ERROR] Unable to connect to server terminate port. Aborting terminate command...");
-			return false;
+			System.out.println("[ERROR] Unable to connect to server terminate port. " +
+					"Aborting terminate command...");
 		}
 	}
 
 	private void get(String fileName) {
+		// Local filename
+		File localFile = new File(fileName.substring(fileName.lastIndexOf('/') + 1));
+
+		// Lock file, reattempts every 2 seconds
+		while (!fileLocks.addLock(localFile)) {
+			try {
+				Thread.currentThread().sleep(2000);
+			} catch (InterruptedException e) {
+			}
+		}
 		writeCommand(TaskType.GET, fileName);
 
-	}
+		// Check if file exists on server
+		try {
+			if (!inputStream.readBoolean()) {
+				System.out.println("File does not exist on server.");
 
-	private void getThread(String fileName) {
+				fileLocks.removeLock(localFile);
+				return;
+			}
+		} catch (IOException e) {
+			// TODO
+		}
 
+		// Delete local version of file if already present
+		if (localFile.exists()) {
+			localFile.delete();
+		}
+
+		// Get command ID
+		long ID;
+		try {
+			ID = inputStream.readLong();
+			System.out.println("ID: " + ID);
+			taskTable.addTask(ID);
+		} catch (IOException e) {
+			System.out.println("[ERROR] Unable to receive from server. Aborting...");
+			return;
+		}
+
+		// Retrieve file chunks and write to file
+        try {
+        	int bytes = 0;
+        	FileOutputStream fileOutputStream = new FileOutputStream(localFile);
+
+        	// Read file length
+        	long length = inputStream.readLong();
+
+        	byte[] buffer = new byte[1000];
+        	while (length > 0 && taskTable.isRunning(ID)
+					&& (bytes = inputStream.read(buffer, 0, (int) Math.min(buffer.length, length))) != -1) {
+        		fileOutputStream.write(buffer, 0 , bytes);
+        		length -= bytes;
+			}
+
+			// If terminated empty socket stream
+            // TODO Not sure if this is enough... may still receive transient file chunks?
+			// TODO Should we delete client file if transfer not completed?
+			if (!taskTable.isRunning(ID)) {
+				inputStream.skipBytes(inputStream.available());
+			}
+
+        	fileOutputStream.close();
+			System.out.println("Retrieved file: " + fileName);
+		} catch (IOException e) {
+        	// TODO
+		}
+
+        fileLocks.removeLock(localFile);
+        taskTable.removeTask(ID);
 	}
 
 	private void put(String fileName) {
-		writeCommand(TaskType.PUT, fileName);
+		File localFile = new File(fileName);
+		if (!localFile.exists()) {
+			System.out.println("[ERROR] Local file not found.");
+			return;
+		}
 
-	}
+		// Lock file, reattempts every 2 seconds
+		while (!fileLocks.addLock(localFile)) {
+			try {
+				Thread.currentThread().sleep(2000);
+			} catch (InterruptedException e) { }
+		}
+		writeCommand(TaskType.GET, fileName);
 
-	private void putThread (String fileName) {
+		// Get command ID
+		long ID;
+		try {
+			ID = inputStream.readLong();
+			System.out.println("ID: " + ID);
+		} catch (IOException e) {
+			// TODO
+		}
 
+		// Send file chunks
+		try {
+			int bytes = 0;
+			FileInputStream fileInputStream = new FileInputStream(localFile);
+
+			// Send file length
+			outputStream.writeLong(localFile.length());
+
+			// Send file chunks
+			byte[] buffer = new byte[1000];
+			while ((bytes = fileInputStream.read(buffer)) != -1) {
+				outputStream.write(buffer, 0, bytes);
+				outputStream.flush();
+			}
+
+			fileInputStream.close();
+			System.out.println("Sent file: " + fileName);
+		} catch (IOException e) {
+			// TODO
+		}
+
+		fileLocks.removeLock(localFile);
 	}
 
 	private void writeCommand(TaskType taskType) {
@@ -86,24 +197,24 @@ public class SimpleFTP {
 
 	private String readResponse() {
 		String response = "";
-	    try {
+		try {
 			response = (String) inputStream.readObject();
 		} catch (IOException e) {
 			System.out.println("[ERROR] Unable to receive command response.");
 		} catch (ClassNotFoundException e) { }
 
-	    return response;
+		return response;
 	}
 
 	private void run() {
 		// Receive command
-		System.out.println(PROMPT);
+		System.out.print(PROMPT);
 		String cmd = sc.nextLine().trim();
 		System.out.println();
 
 		while(!cmd.equals("quit")) {
 			if (cmd.equals("ls")) {
-			    writeCommand(TaskType.LS);
+				writeCommand(TaskType.LS);
 				System.out.println(readResponse());
 			} else if (cmd.equals("pwd")) {
 				writeCommand(TaskType.PWD);
@@ -118,23 +229,23 @@ public class SimpleFTP {
 				final String fileName = cmd.substring(cmd.indexOf(" ") + 1);
 				if (cmd.endsWith("&")) {
 					Runnable task = () -> {
-						getThread(fileName);
+						get(fileName);
 					};
 
 					new Thread(task).start();
 				} else {
-				    get(fileName);
+					get(fileName);
 				}
 			} else if (cmd.startsWith("put")) {
 				final String fileName = cmd.substring(cmd.indexOf(" ") + 1);
 				if (cmd.endsWith("&")) {
 					Runnable task = () -> {
-						putThread(fileName);
+						put(fileName);
 					};
 
 					new Thread(task).start();
 				} else {
-				    put(fileName);
+					put(fileName);
 				}
 			} else if (cmd.startsWith("delete")) {
 				writeCommand(TaskType.DELETE, cmd.substring(cmd.indexOf(" ") + 1));
@@ -146,7 +257,7 @@ public class SimpleFTP {
 			}
 
 			// Receive command
-			System.out.println(PROMPT);
+			System.out.print(PROMPT);
 			cmd = sc.nextLine().trim();
 			System.out.println();
 		}
@@ -155,7 +266,7 @@ public class SimpleFTP {
 		writeCommand(TaskType.QUIT);
 
 		// Cleanup
-        try {
+		try {
 			nSocket.close();
 			inputStream.close();
 			outputStream.close();
@@ -164,7 +275,8 @@ public class SimpleFTP {
 
 	public static void main(String[] args) {
 		if(args.length != 3){
-			System.out.println("[ERROR] Please include three arguments, machine name, normal port number, and terminate port number");
+			System.out.println("[ERROR] Please include three arguments, machine name, " +
+					"normal port number, and terminate port number");
 		}
 
 		String machine = args[0];

@@ -38,9 +38,9 @@ class ConnectionListener implements Runnable {
                 try {
                     Socket clientSocket = serverSocket.accept();
                     if (type == ListenerType.NORMAL) {
-                        new NormalConnection(clientSocket, fileLocks, taskTable);
+                        new Thread(new NormalConnection(clientSocket, fileLocks, taskTable)).start();
                     } else {
-                        new TerminateConnection(clientSocket, taskTable);
+                        new Thread(new TerminateConnection(clientSocket, taskTable)).start();
                     }
                     System.out.printf("Connection established on %s port.\n", type.name);
                 } catch (IOException e) {

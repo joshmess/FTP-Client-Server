@@ -6,9 +6,8 @@ import java.net.Socket;
 /**
  * A port connection for client to terminate a running task in the `ThreadPool`. The
  * client should immediately send a `long` task ID. The server will respond with a
- * `boolean` `true` if the task ID was valid (i.e. the task has not yet completed and
- * is still in the `ThreadPool` task queue or is currently being executed in a worker
- * thread. This does not guarantee that the process was terminated before its completion.
+ * `boolean` `true` if the task ID was valid (i.e. the task has not yet completed)
+ * This does not guarantee that the process was terminated before its completion.
  */
 public class TerminateConnection implements Runnable {
     private Socket clientSocket;
@@ -25,8 +24,8 @@ public class TerminateConnection implements Runnable {
         exitThread = false;
 
         try {
-            dataInputStream = new DataInputStream(clientSocket.getInputStream());
             dataOutputStream = new DataOutputStream(clientSocket.getOutputStream());
+            dataInputStream = new DataInputStream(clientSocket.getInputStream());
         } catch (IOException e) {
             System.err.println("[ERROR]: Unable to create i/o streams with client on" +
                     "TERMINATE PORT! Closing connection.");

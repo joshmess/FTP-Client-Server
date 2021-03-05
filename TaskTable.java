@@ -1,7 +1,7 @@
 import java.util.HashMap;
 
 public class TaskTable {
-    private volatile HashMap<Long, NormalConnection> taskTable;
+    private volatile HashMap<Long, Boolean> taskTable;
 
     public TaskTable() {
         this.taskTable = new HashMap<>();
@@ -10,10 +10,9 @@ public class TaskTable {
     /**
      * Called by long-running `NormalConnection` threads.
      * @param ID
-     * @param connection
      */
-    public synchronized void addTask(long ID, NormalConnection connection) {
-        taskTable.put(ID, connection);
+    public synchronized void addTask(long ID) {
+        taskTable.put(ID, true);
     }
 
     /**
@@ -27,14 +26,22 @@ public class TaskTable {
     /**
      * Sets a long-running task thread to terminate.
      * @param ID
-     * @return
      */
     public synchronized boolean terminateTask(long ID) {
-        NormalConnection connection = taskTable.get(ID);
-        if (connection == null) {
+        if (!taskTable.containsKey(ID)) {
             return false;
         }
-        connection.terminateTask();
+
+        taskTable.put(ID, false);
         return true;
+    }
+
+    /**
+     * Returns status of a long-running task.
+     * @param ID
+     * @return false if the task has been terminated
+     */
+    public synchronized boolean isRunning(long ID) {
+        return taskTable.get(ID);
     }
 }
