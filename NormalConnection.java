@@ -236,7 +236,17 @@ class NormalConnection implements Runnable {
                 new Thread(putTask).start();
                 break;
             case DELETE:
+                File deleteFile = new File(pwd, fileName);
 
+                if (deleteFile.exists()) {
+                    if (deleteFile.delete()) {
+                        response = "File " + fileName + " deleted.";
+                    } else {
+                        response = "Failed to delete file " + fileName;
+                    }
+                } else {
+                    response = "File not found.";
+                }
                 break;
         }
 
