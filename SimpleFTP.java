@@ -12,12 +12,14 @@ public class SimpleFTP {
 	private ObjectOutputStream outputStream;
 	private Scanner sc;
 	private int tPort;
+	private int nPort;
 	private FileLocks fileLocks;
 	private TaskTable taskTable;
 
 	public SimpleFTP(String machine, int nPort, int tPort) {
 		this.tPort = tPort;
 		this.machine = machine;
+		this.nPort=nPort;
 		this.sc = new Scanner(System.in);
 		this.fileLocks = new FileLocks();
 		this.taskTable = new TaskTable();
@@ -87,12 +89,17 @@ public class SimpleFTP {
 
 		// Get command ID
 		long ID;
+		ObjectInputStream inputStream2;
+		Socket socket2;
 		try {
-			ID = inputStream.readLong();
+			socket2=new Socket(machine, nPort+1);
+			inputStream2=new ObjectInputStream(socket2.getInputStream());
+			ID = inputStream2.readLong();
 			System.out.println("ID: " + ID);
 			taskTable.addTask(ID);
 		} catch (IOException e) {
 			System.out.println("[ERROR] Unable to receive from server. Aborting...");
+			e.printStackTrace();
 			return;
 		}
 
@@ -102,11 +109,11 @@ public class SimpleFTP {
         	FileOutputStream fileOutputStream = new FileOutputStream(localFile);
 
         	// Read file length
-        	long length = inputStream.readLong();
+        	long length = inputStream2.readLong();
 
         	byte[] buffer = new byte[1000];
         	while (length > 0 && taskTable.isRunning(ID)
-					&& (bytes = inputStream.read(buffer, 0, (int) Math.min(buffer.length, length))) != -1) {
+					&& (bytes = inputStream2.read(buffer, 0, (int) Math.min(buffer.length, length))) != -1) {
         		fileOutputStream.write(buffer, 0 , bytes);
         		length -= bytes;
 			}
@@ -115,9 +122,11 @@ public class SimpleFTP {
             // TODO Not sure if this is enough... may still receive transient file chunks?
 			// TODO Should we delete client file if transfer not completed?
 			if (!taskTable.isRunning(ID)) {
-				inputStream.skipBytes(inputStream.available());
+				inputStream2.skipBytes(inputStream2.available());
 			}
 
+			inputStream2.close();
+			socket2.close();
         	fileOutputStream.close();
 			System.out.println("Retrieved file: " + fileName);
 		} catch (IOException e) {
@@ -144,36 +153,49 @@ public class SimpleFTP {
 		writeCommand(TaskType.PUT, fileName);
 
 		// Get command ID
-		long ID;
+		long ID=0;
 		try {
-			ID = inputStream.readLong();
-			System.out.println("ID: " + ID);
-		} catch (IOException e) {
-			// TODO
+			ID=inputStream.readLong();
+			System.out.println("ID: "+ID);
+	}
+		catch (IOException e) {
+
 		}
-
-		// Send file chunks
 		try {
-			int bytes = 0;
-			FileInputStream fileInputStream = new FileInputStream(localFile);
-
-			// Send file length
-			outputStream.writeLong(localFile.length());
+			Socket socket2=new Socket(machine, nPort+2);
+			ObjectInputStream inputStream2=new ObjectInputStream(socket2.getInputStream());
+			ObjectOutputStream outputStream2=new ObjectOutputStream(socket2.getOutputStream());
 
 			// Send file chunks
-			byte[] buffer = new byte[1000];
-			while ((bytes = fileInputStream.read(buffer)) != -1) {
-				outputStream.write(buffer, 0, bytes);
-				outputStream.flush();
+			try {
+				int bytes = 0;
+				FileInputStream fileInputStream = new FileInputStream(localFile);
+
+				// Send file length
+				outputStream2.writeLong(localFile.length());
+
+				// Send file chunks
+				byte[] buffer = new byte[1000];
+				while ((bytes = fileInputStream.read(buffer)) != -1) {
+					outputStream2.write(buffer, 0, bytes);
+					outputStream2.flush();
+				}
+
+				inputStream2.close();
+				outputStream2.close();
+				socket2.close();
+				fileInputStream.close();
+				System.out.println("Sent file: " + fileName);
+			} catch (IOException e) {
+				// TODO
 			}
 
-			fileInputStream.close();
-			System.out.println("Sent file: " + fileName);
-		} catch (IOException e) {
-			// TODO
-		}
 
-		fileLocks.removeLock(localFile);
+			fileLocks.removeLock(localFile);
+		}
+		catch (IOException e) {
+
+		}
 	}
 
 	private void writeCommand(TaskType taskType) {
@@ -182,6 +204,7 @@ public class SimpleFTP {
 			outputStream.flush();
 		} catch (IOException e) {
 			System.out.println("[ERROR] Unable to send " + taskType.name() + " command.");
+			e.printStackTrace();
 		}
 	}
 
@@ -201,18 +224,23 @@ public class SimpleFTP {
 			response = (String) inputStream.readObject();
 		} catch (IOException e) {
 			System.out.println("[ERROR] Unable to receive command response.");
+			e.printStackTrace();
 		} catch (ClassNotFoundException e) { }
 
 		return response;
 	}
-
+	
 	private void run() {
 		// Receive command
 		System.out.print(PROMPT);
 		String cmd = sc.nextLine().trim();
+		String previousCMD="";
 		System.out.println();
 
 		while(!cmd.equals("quit")) {
+			if (previousCMD.startsWith("get") || previousCMD.startsWith("put")) {
+				readResponse();
+			}
 			if (cmd.equals("ls")) {
 				writeCommand(TaskType.LS);
 				System.out.println(readResponse());
@@ -258,6 +286,7 @@ public class SimpleFTP {
 
 			// Receive command
 			System.out.print(PROMPT);
+			previousCMD=cmd;
 			cmd = sc.nextLine().trim();
 			System.out.println();
 		}
