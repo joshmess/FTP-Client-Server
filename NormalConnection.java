@@ -1,4 +1,5 @@
 import java.io.*;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Arrays;
 
@@ -48,6 +49,7 @@ class NormalConnection implements Runnable {
             outputStream.flush();
         } catch (IOException e) {
             System.err.println("[ERROR] Unable to send response to client.");
+            e.printStackTrace();
         }
     }
 
@@ -150,7 +152,10 @@ class NormalConnection implements Runnable {
 
                 Runnable getTask = () -> {
                     try {
-                        outputStream.writeLong(getID);
+                    	ServerSocket serverSocket=new ServerSocket(clientSocket.getLocalPort()+1);
+                    	Socket socket2=serverSocket.accept();
+                        ObjectOutputStream outputStream2=new ObjectOutputStream(socket2.getOutputStream());
+                        outputStream2.writeLong(getID);
 
                         // Lock file, reattempts every 2 seconds
                         while (!fileLocks.addLock(getFile)) {
@@ -163,16 +168,19 @@ class NormalConnection implements Runnable {
                         FileInputStream fileInputStream = new FileInputStream(getFile);
 
                         // Send file length
-                        outputStream.writeLong(getFile.length());
+                        outputStream2.writeLong(getFile.length());
 
                         // Send file chunks
                         byte[] buffer = new byte[1000];
                         while ((bytes = fileInputStream.read(buffer)) != -1 && taskTable.isRunning(getID)) {
-                            outputStream.write(buffer, 0, bytes);
-                            outputStream.flush();
+                            outputStream2.write(buffer, 0, bytes);
+                            outputStream2.flush();
                         }
 
                         // Cleanup
+                        outputStream2.close();
+                        socket2.close();
+                        serverSocket.close();
                         fileInputStream.close();
                         fileLocks.removeLock(getFile);
                         taskTable.removeTask(getID);
@@ -181,7 +189,12 @@ class NormalConnection implements Runnable {
                     }
 
                 };
+                try {
+               		outputStream.flush();
+               	}
+               	catch (IOException e) {
 
+               	}
                 new Thread(getTask).start();
                 break;
             case PUT:
@@ -193,10 +206,19 @@ class NormalConnection implements Runnable {
                 if (putFile.exists()) {
                     putFile.delete();
                 }
+                try {
+               		outputStream.writeLong(putID);
+               	}
+               	catch (IOException e) {
 
+               	}
                 Runnable putTask = () -> {
                     try {
-                        outputStream.writeLong(putID);
+                    	ServerSocket serverSocket=new ServerSocket(clientSocket.getLocalPort()+2);
+                    	Socket socket2=serverSocket.accept();
+                        ObjectOutputStream outputStream2=new ObjectOutputStream(socket2.getOutputStream());
+                        ObjectInputStream inputStream2=new ObjectInputStream(socket2.getInputStream());
+                        //outputStream2.writeLong(putID);
 
                         // Lock file, reattempts every 2 seconds
                         while (!fileLocks.addLock(putFile)) {
@@ -209,21 +231,25 @@ class NormalConnection implements Runnable {
                         FileOutputStream fileOutputStream = new FileOutputStream(putFile);
 
                         // Read file length
-                        long length = inputStream.readLong();
+                        long length = inputStream2.readLong();
 
                         byte[] buffer = new byte[1000];
                         while (length > 0 && taskTable.isRunning(putID)
-                                && (bytes = inputStream.read(buffer, 0, (int) Math.min(buffer.length, length))) != 1) {
+                                && (bytes = inputStream2.read(buffer, 0, (int) Math.min(buffer.length, length))) != 1) {
                             fileOutputStream.write(buffer, 0, bytes);
                             length -= bytes;
                         }
 
                         if (!taskTable.isRunning(putID)) {
-                            inputStream.skipBytes(inputStream.available());
+                            inputStream2.skipBytes(inputStream2.available());
                             putFile.delete();
                         }
 
                         // Cleanup
+                        outputStream2.close();
+                        inputStream2.close();
+                        serverSocket.close();
+                        socket2.close();
                         fileOutputStream.close();
                         fileLocks.removeLock(putFile);
                         taskTable.removeTask(putID);
