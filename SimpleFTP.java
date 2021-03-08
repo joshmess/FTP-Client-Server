@@ -77,7 +77,7 @@ public class SimpleFTP {
 				return;
 			}
 		} catch (IOException e) {
-			// TODO
+			return;
 		}
 
 		// Delete local version of file if already present
@@ -92,7 +92,6 @@ public class SimpleFTP {
 			System.out.println("ID: " + ID);
 			taskTable.addTask(ID);
 		} catch (IOException e) {
-			System.out.println("[ERROR] Unable to receive from server. Aborting...");
 			return;
 		}
 
@@ -119,7 +118,6 @@ public class SimpleFTP {
 			}
 
         	fileOutputStream.close();
-			System.out.println("Retrieved file: " + fileName);
 		} catch (IOException e) {
         	// TODO
 		}
@@ -230,25 +228,27 @@ public class SimpleFTP {
 				writeCommand(TaskType.CD, cmd.substring(cmd.indexOf(" ") + 1));
 				System.out.println(readResponse());
 			} else if (cmd.startsWith("get")) {
-				final String fileName = cmd.substring(cmd.indexOf(" ") + 1);
 				if (cmd.endsWith("&")) {
+					final String fileName = cmd.substring(cmd.indexOf(" ") + 1, cmd.length() - 2);
 					Runnable task = () -> {
 						get(fileName);
 					};
 
 					new Thread(task).start();
 				} else {
+					String fileName = cmd.substring(cmd.indexOf(" ") + 1);
 					get(fileName);
 				}
 			} else if (cmd.startsWith("put")) {
-				final String fileName = cmd.substring(cmd.indexOf(" ") + 1);
 				if (cmd.endsWith("&")) {
+					final String fileName = cmd.substring(cmd.indexOf(" ") + 1, cmd.length() - 2);
 					Runnable task = () -> {
 						put(fileName);
 					};
 
 					new Thread(task).start();
 				} else {
+					String fileName = cmd.substring(cmd.indexOf(" ") + 1);
 					put(fileName);
 				}
 			} else if (cmd.startsWith("delete")) {
