@@ -98,7 +98,7 @@ class NormalConnection implements Runnable {
             case MKDIR:
                 File file = new File(pwd, fileName);
                 if (file.mkdir()) {
-                    response = "";
+                    response = "Directory created.";
                 } else {
                     response = "[ERROR] Unable to make directory.";
                 }
@@ -117,76 +117,76 @@ class NormalConnection implements Runnable {
                 } else {
                     // Navigate into specified directory
                     File child = new File(pwd, fileName);
-                    if (!child.isDirectory()) {
-                        writeResponse(fileName + " is not a directory!");
-                        return true;
-                    }
 
                     if (child.exists()) {
-                        pwd = child;
-                        response = "Changing working directory to " + fileName;
+                        if (child.isDirectory()) {
+                            pwd = child;
+                            response = "Changing working directory to " + fileName;
+                        } else {
+                            response = fileName + " is not a directory!";
+                        }
                     } else {
                         response = "Directory not found.";
                     }
                 }
                 break;
             case GET:
-                final File getFile = new File(pwd, fileName);
+                File getFile = new File(pwd, fileName);
 
                 // Let client know if file exits
                 try {
                     if (getFile.exists()) {
                         outputStream.writeBoolean(true);
+                        outputStream.flush();
                     } else {
                         outputStream.writeBoolean(false);
+                        outputStream.flush();
                         break;
                     }
                 } catch (IOException e) {
                     // TODO
                 }
 
-                final long getID = createID();
+                long getID = createID();
                 taskTable.addTask(getID);
 
-                Runnable getTask = () -> {
-                    try {
-                        outputStream.writeLong(getID);
+                try {
+                    outputStream.writeLong(getID);
+                    outputStream.flush();
 
-                        // Lock file, reattempts every 2 seconds
-                        while (!fileLocks.addLock(getFile)) {
-                            try {
-                                Thread.currentThread().sleep(2000);
-                            } catch (InterruptedException e) { }
-                        }
-
-                        int bytes = 0;
-                        FileInputStream fileInputStream = new FileInputStream(getFile);
-
-                        // Send file length
-                        outputStream.writeLong(getFile.length());
-
-                        // Send file chunks
-                        byte[] buffer = new byte[1000];
-                        while ((bytes = fileInputStream.read(buffer)) != -1 && taskTable.isRunning(getID)) {
-                            outputStream.write(buffer, 0, bytes);
-                            outputStream.flush();
-                        }
-
-                        // Cleanup
-                        fileInputStream.close();
-                        fileLocks.removeLock(getFile);
-                        taskTable.removeTask(getID);
-                    } catch (IOException e) {
-                        // TODO
+                    // Lock file, reattempts every 2 seconds
+                    while (!fileLocks.addLock(getFile)) {
+                        try {
+                            Thread.currentThread().sleep(2000);
+                        } catch (InterruptedException e) { }
                     }
 
-                };
+                    int bytes = 0;
+                    FileInputStream fileInputStream = new FileInputStream(getFile);
 
-                new Thread(getTask).start();
+                    // Send file length
+                    outputStream.writeLong(getFile.length());
+                    outputStream.flush();
+
+                    // Send file chunks
+                    byte[] buffer = new byte[1000];
+                    while ((bytes = fileInputStream.read(buffer)) != -1 && taskTable.isRunning(getID)) {
+                        outputStream.write(buffer, 0, bytes);
+                        outputStream.flush();
+                    }
+
+                    // Cleanup
+                    fileInputStream.close();
+                    fileLocks.removeLock(getFile);
+                    taskTable.removeTask(getID);
+                } catch (IOException e) {
+                    // TODO
+                }
+
                 break;
             case PUT:
-                final File putFile = new File(pwd, fileName);
-                final long putID = createID();
+                File putFile = new File(pwd, fileName);
+                long putID = createID();
                 taskTable.addTask(putID);
 
                 // Delete local version of file if already present
@@ -194,54 +194,59 @@ class NormalConnection implements Runnable {
                     putFile.delete();
                 }
 
-                Runnable putTask = () -> {
-                    try {
-                        outputStream.writeLong(putID);
+                try {
+                    outputStream.writeLong(putID);
+                    outputStream.flush();
 
-                        // Lock file, reattempts every 2 seconds
-                        while (!fileLocks.addLock(putFile)) {
-                            try {
-                                Thread.currentThread().sleep(2000);
-                            } catch (InterruptedException e) { }
-                        }
-
-                        int bytes = 0;
-                        FileOutputStream fileOutputStream = new FileOutputStream(putFile);
-
-                        // Read file length
-                        long length = inputStream.readLong();
-
-                        byte[] buffer = new byte[1000];
-                        while (length > 0 && taskTable.isRunning(putID)
-                                && (bytes = inputStream.read(buffer, 0, (int) Math.min(buffer.length, length))) != 1) {
-                            fileOutputStream.write(buffer, 0, bytes);
-                            length -= bytes;
-                        }
-
-                        if (!taskTable.isRunning(putID)) {
-                            inputStream.skipBytes(inputStream.available());
-                            putFile.delete();
-                        }
-
-                        // Cleanup
-                        fileOutputStream.close();
-                        fileLocks.removeLock(putFile);
-                        taskTable.removeTask(putID);
-                    } catch (IOException f) {
-                        // TODO
+                    // Lock file, reattempts every 2 seconds
+                    while (!fileLocks.addLock(putFile)) {
+                        try {
+                            Thread.currentThread().sleep(2000);
+                        } catch (InterruptedException e) { }
                     }
-                };
 
-                new Thread(putTask).start();
+                    int bytes = 0;
+                    FileOutputStream fileOutputStream = new FileOutputStream(putFile);
+
+                    // Read file length
+                    long length = inputStream.readLong();
+
+                    byte[] buffer = new byte[1000];
+                    while (length > 0 && taskTable.isRunning(putID)
+                            && (bytes = inputStream.read(buffer, 0, (int) Math.min(buffer.length, length))) != 1) {
+                        fileOutputStream.write(buffer, 0, bytes);
+                        length -= bytes;
+                    }
+
+                    if (!taskTable.isRunning(putID)) {
+                        inputStream.skipBytes(inputStream.available());
+                        putFile.delete();
+                    }
+
+                    // Cleanup
+                    fileOutputStream.close();
+                    fileLocks.removeLock(putFile);
+                    taskTable.removeTask(putID);
+                } catch (IOException f) {
+                    // TODO
+                }
                 break;
             case DELETE:
                 File deleteFile = new File(pwd, fileName);
 
                 if (deleteFile.exists()) {
-                    if (deleteFile.delete()) {
-                        response = "File " + fileName + " deleted.";
+                    if (deleteFile.isDirectory()) {
+                        if (deleteFile.delete()) {
+                            response = "Directory " + fileName + " deleted.";
+                        } else {
+                            response = "Failed to delete directory " + fileName;
+                        }
                     } else {
-                        response = "Failed to delete file " + fileName;
+                        if (deleteFile.delete()) {
+                            response = "File " + fileName + " deleted.";
+                        } else {
+                            response = "Failed to delete file " + fileName;
+                        }
                     }
                 } else {
                     response = "File not found.";
@@ -278,7 +283,7 @@ class NormalConnection implements Runnable {
             } catch (IOException e) {
                 System.err.println("[ERROR] Exception encountered while closing TerminateConnection i/o stream.");
             }
-            System.out.println("[NORMAL PORT]: Connection closed.");
+            System.out.println("[Normal Port]: Connection closed.");
         }
 
         try {

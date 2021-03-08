@@ -42,7 +42,6 @@ class ConnectionListener implements Runnable {
                     } else {
                         new Thread(new TerminateConnection(clientSocket, taskTable)).start();
                     }
-                    System.out.printf("Connection established on %s port.\n", type.name);
                 } catch (IOException e) {
                     System.err.printf("[ERROR] Unable to accept %s connection. Continuing to accept new connections.\n", type.name);
                 }

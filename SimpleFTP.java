@@ -159,6 +159,7 @@ public class SimpleFTP {
 
 			// Send file length
 			outputStream.writeLong(localFile.length());
+			outputStream.flush();
 
 			// Send file chunks
 			byte[] buffer = new byte[1000];
@@ -210,7 +211,6 @@ public class SimpleFTP {
 		// Receive command
 		System.out.print(PROMPT);
 		String cmd = sc.nextLine().trim();
-		System.out.println();
 
 		while(!cmd.equals("quit")) {
 			if (cmd.equals("ls")) {
@@ -223,6 +223,10 @@ public class SimpleFTP {
 				writeCommand(TaskType.MKDIR, cmd.substring(cmd.indexOf(" ") + 1));
 				System.out.println(readResponse());
 			} else if (cmd.startsWith("cd")) {
+				if (cmd.equals("cd")) {
+					System.out.println("Must enter a directory name.");
+					break;
+				}
 				writeCommand(TaskType.CD, cmd.substring(cmd.indexOf(" ") + 1));
 				System.out.println(readResponse());
 			} else if (cmd.startsWith("get")) {
@@ -249,7 +253,7 @@ public class SimpleFTP {
 				}
 			} else if (cmd.startsWith("delete")) {
 				writeCommand(TaskType.DELETE, cmd.substring(cmd.indexOf(" ") + 1));
-				readResponse();
+				System.out.println(readResponse());
 			} else if (cmd.startsWith("terminate")) {
 				terminate(Long.parseLong(cmd.substring(cmd.indexOf(" ") + 1)));
 			} else {
@@ -259,7 +263,6 @@ public class SimpleFTP {
 			// Receive command
 			System.out.print(PROMPT);
 			cmd = sc.nextLine().trim();
-			System.out.println();
 		}
 
 		// Exit server
