@@ -210,7 +210,6 @@ public class SimpleFTP {
 		System.out.print(PROMPT);
 		String cmd = sc.nextLine().trim();
 		String previousCMD="";
-		System.out.println();
 
 		while(!cmd.equals("quit")) {
 			if (previousCMD.startsWith("get") || previousCMD.startsWith("put")) {
@@ -226,33 +225,39 @@ public class SimpleFTP {
 				writeCommand(TaskType.MKDIR, cmd.substring(cmd.indexOf(" ") + 1));
 				System.out.println(readResponse());
 			} else if (cmd.startsWith("cd")) {
+				if (cmd.equals("cd")) {
+					System.out.println("Must enter a directory name.");
+					break;
+				}
 				writeCommand(TaskType.CD, cmd.substring(cmd.indexOf(" ") + 1));
 				System.out.println(readResponse());
 			} else if (cmd.startsWith("get")) {
-				final String fileName = cmd.substring(cmd.indexOf(" ") + 1);
 				if (cmd.endsWith("&")) {
+					final String fileName = cmd.substring(cmd.indexOf(" ") + 1, cmd.length() - 2);
 					Runnable task = () -> {
 						get(fileName);
 					};
 
 					new Thread(task).start();
 				} else {
+					String fileName = cmd.substring(cmd.indexOf(" ") + 1);
 					get(fileName);
 				}
 			} else if (cmd.startsWith("put")) {
-				final String fileName = cmd.substring(cmd.indexOf(" ") + 1);
 				if (cmd.endsWith("&")) {
+					final String fileName = cmd.substring(cmd.indexOf(" ") + 1, cmd.length() - 2);
 					Runnable task = () -> {
 						put(fileName);
 					};
 
 					new Thread(task).start();
 				} else {
+					String fileName = cmd.substring(cmd.indexOf(" ") + 1);
 					put(fileName);
 				}
 			} else if (cmd.startsWith("delete")) {
 				writeCommand(TaskType.DELETE, cmd.substring(cmd.indexOf(" ") + 1));
-				readResponse();
+				System.out.println(readResponse());
 			} else if (cmd.startsWith("terminate")) {
 				terminate(Long.parseLong(cmd.substring(cmd.indexOf(" ") + 1)));
 			} else {
@@ -263,7 +268,6 @@ public class SimpleFTP {
 			System.out.print(PROMPT);
 			previousCMD=cmd;
 			cmd = sc.nextLine().trim();
-			System.out.println();
 		}
 
 		// Exit server
