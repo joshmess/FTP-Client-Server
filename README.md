@@ -19,3 +19,4 @@ $ java SimpleFTP [MACHINE_NAME] [nPORT] [tPORT]
 ```
 $ java SimpleFTPServer [nPORT] [tPORT]
 ```
+This project was done in its entirety by Josh, Alex, and Robert. We hereby state that we have not received unauthorized help of any form.
