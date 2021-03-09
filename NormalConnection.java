@@ -225,7 +225,7 @@ class NormalConnection implements Runnable {
 
                     byte[] buffer = new byte[1000];
                     while (length > 0 && taskTable.isRunning(putID)
-                            && (bytes = inputStream.read(buffer, 0, (int) Math.min(buffer.length, length))) != 1) {
+                            && (bytes = inputStream.read(buffer, 0, (int) Math.min(buffer.length, length))) != -1) {
                         // Cleanup file if transfer was terminated
                         if (Arrays.equals(buffer, "terminate".getBytes())) {
                             fileOutputStream.close();
