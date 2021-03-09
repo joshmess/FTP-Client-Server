@@ -1,5 +1,3 @@
-import javafx.concurrent.Task;
-
 import java.io.*;
 import java.net.Socket;
 import java.util.*;
@@ -178,6 +176,7 @@ public class SimpleFTP {
 		}
 
 		fileLocks.removeLock(localFile);
+		readResponse();
 	}
 
 	private void writeCommand(TaskType taskType) {
@@ -214,12 +213,8 @@ public class SimpleFTP {
 		// Receive command
 		System.out.print(PROMPT);
 		String cmd = sc.nextLine().trim();
-		// String previousCMD="";
 
 		while(!cmd.equals("quit")) {
-//			if (previousCMD.startsWith("get") || previousCMD.startsWith("put")) {
-//				readResponse();
-//			}
 			if (cmd.equals("ls")) {
 				writeCommand(TaskType.LS);
 				System.out.println(readResponse());
