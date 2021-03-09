@@ -139,8 +139,8 @@ public class SimpleFTP {
 		}
 		writeCommand(TaskType.PUT, fileName);
 
-		// Get command ID
-		long ID;
+		// Put command ID
+		long ID = 0;
 		try {
 			ID = inputStream.readLong();
 			System.out.println("ID: " + ID);
