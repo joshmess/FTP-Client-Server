@@ -1,7 +1,7 @@
 import java.util.HashMap;
 
 public class TaskTable {
-    private volatile HashMap<Long, Boolean> taskTable;
+    private HashMap<Long, Boolean> taskTable;
 
     public TaskTable() {
         this.taskTable = new HashMap<>();
@@ -42,6 +42,10 @@ public class TaskTable {
      * @return false if the task has been terminated
      */
     public synchronized boolean isRunning(long ID) {
-        return taskTable.get(ID);
+        Boolean runState = taskTable.get(ID);
+        if (runState == null) {
+            return false;
+        }
+        return runState;
     }
 }

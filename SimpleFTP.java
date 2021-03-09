@@ -1,3 +1,5 @@
+import javafx.concurrent.Task;
+
 import java.io.*;
 import java.net.Socket;
 import java.util.*;
@@ -40,11 +42,8 @@ public class SimpleFTP {
 			DataOutputStream dataOutputStream = new DataOutputStream(tSocket.getOutputStream());
 
 			// Send command ID to server
-			// Task may be finished on server and removed from server taskTable, but
-			// client may still be running. If not running on either, then task ID is
-			// invalid.
 			dataOutputStream.writeLong(ID);
-			if (dataInputStream.readBoolean() || taskTable.terminateTask(ID)) {
+			if (dataInputStream.readBoolean()) {
 				System.out.println("Terminating task.");
 			} else {
 				System.out.println("Invalid task ID.");
@@ -90,7 +89,6 @@ public class SimpleFTP {
 		try {
 			ID = inputStream.readLong();
 			System.out.println("ID: " + ID);
-			taskTable.addTask(ID);
 		} catch (IOException e) {
 			return;
 		}
@@ -104,26 +102,26 @@ public class SimpleFTP {
         	long length = inputStream.readLong();
 
         	byte[] buffer = new byte[1000];
-        	while (length > 0 && taskTable.isRunning(ID)
-					&& (bytes = inputStream.read(buffer, 0, (int) Math.min(buffer.length, length))) != -1) {
+        	while (length > 0 && (bytes = inputStream.read(buffer, 0, (int) Math.min(buffer.length, length))) != -1) {
+        	    // Cleanup file if transfer was terminated
+				if (Arrays.equals(buffer, "terminate".getBytes())) {
+					fileOutputStream.close();
+					localFile.delete();
+					fileLocks.removeLock(localFile);
+					return;
+				}
+
         		fileOutputStream.write(buffer, 0 , bytes);
         		length -= bytes;
 			}
 
-			// If terminated empty socket stream
-            // TODO Not sure if this is enough... may still receive transient file chunks?
-			// TODO Should we delete client file if transfer not completed?
-			if (!taskTable.isRunning(ID)) {
-				inputStream.skipBytes(inputStream.available());
-			}
-
         	fileOutputStream.close();
+        	readResponse();
 		} catch (IOException e) {
         	// TODO
 		}
 
         fileLocks.removeLock(localFile);
-        taskTable.removeTask(ID);
 	}
 
 	private void put(String fileName) {
@@ -147,7 +145,7 @@ public class SimpleFTP {
 			ID = inputStream.readLong();
 			System.out.println("ID: " + ID);
 		} catch (IOException e) {
-			// TODO
+		    // TODO
 		}
 
 		// Send file chunks
@@ -161,8 +159,15 @@ public class SimpleFTP {
 
 			// Send file chunks
 			byte[] buffer = new byte[1000];
-			while ((bytes = fileInputStream.read(buffer)) != -1) {
+			while ((bytes = fileInputStream.read(buffer)) != -1
+						&& taskTable.isRunning(ID)) {
 				outputStream.write(buffer, 0, bytes);
+				outputStream.flush();
+			}
+
+			if (!taskTable.isRunning(ID)) {
+				buffer = "terminate".getBytes();
+				outputStream.write(buffer, 0, buffer.length);
 				outputStream.flush();
 			}
 
@@ -209,12 +214,12 @@ public class SimpleFTP {
 		// Receive command
 		System.out.print(PROMPT);
 		String cmd = sc.nextLine().trim();
-		String previousCMD="";
+		// String previousCMD="";
 
 		while(!cmd.equals("quit")) {
-			if (previousCMD.startsWith("get") || previousCMD.startsWith("put")) {
-				readResponse();
-			}
+//			if (previousCMD.startsWith("get") || previousCMD.startsWith("put")) {
+//				readResponse();
+//			}
 			if (cmd.equals("ls")) {
 				writeCommand(TaskType.LS);
 				System.out.println(readResponse());
@@ -266,7 +271,7 @@ public class SimpleFTP {
 
 			// Receive command
 			System.out.print(PROMPT);
-			previousCMD=cmd;
+//			previousCMD=cmd;
 			cmd = sc.nextLine().trim();
 		}
 
@@ -285,6 +290,7 @@ public class SimpleFTP {
 		if(args.length != 3){
 			System.out.println("[ERROR] Please include three arguments, machine name, " +
 					"normal port number, and terminate port number");
+			return;
 		}
 
 		String machine = args[0];

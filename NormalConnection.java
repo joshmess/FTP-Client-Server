@@ -175,12 +175,24 @@ class NormalConnection implements Runnable {
                         outputStream.flush();
                     }
 
+                    // If terminated, send terminate bytes to client so client can
+                    // terminate as well.
+                    // This is to guarantee that the client socket doesn't have
+                    // transient bytes still in the inputstream in an implementation
+                    // where the client terminates recv before the server terminates send.
+                    if (!taskTable.isRunning(getID)) {
+                        buffer = "terminate".getBytes();
+                        outputStream.write(buffer, 0, buffer.length);
+                        outputStream.flush();
+                    }
+
                     // Cleanup
                     fileInputStream.close();
                     fileLocks.removeLock(getFile);
                     taskTable.removeTask(getID);
                 } catch (IOException e) {
-                    // TODO
+                    fileLocks.removeLock(getFile);
+                    taskTable.removeTask(getID);
                 }
 
                 break;
@@ -214,13 +226,16 @@ class NormalConnection implements Runnable {
                     byte[] buffer = new byte[1000];
                     while (length > 0 && taskTable.isRunning(putID)
                             && (bytes = inputStream.read(buffer, 0, (int) Math.min(buffer.length, length))) != 1) {
+                        // Cleanup file if transfer was terminated
+                        if (Arrays.equals(buffer, "terminate".getBytes())) {
+                            fileOutputStream.close();
+                            putFile.delete();
+                            fileLocks.removeLock(putFile);
+                            taskTable.removeTask(putID);
+                            return true;
+                        }
                         fileOutputStream.write(buffer, 0, bytes);
                         length -= bytes;
-                    }
-
-                    if (!taskTable.isRunning(putID)) {
-                        inputStream.skipBytes(inputStream.available());
-                        putFile.delete();
                     }
 
                     // Cleanup
@@ -228,7 +243,8 @@ class NormalConnection implements Runnable {
                     fileLocks.removeLock(putFile);
                     taskTable.removeTask(putID);
                 } catch (IOException f) {
-                    // TODO
+                    fileLocks.removeLock(putFile);
+                    taskTable.removeTask(putID);
                 }
                 break;
             case DELETE:
