@@ -59,7 +59,7 @@ public class SimpleFTP {
 		}
 	}
 
-	private void get(String fileName) {
+	private void get(String fileName, boolean isNewThread) {
 		// Local filename
 		File localFile = new File(fileName.substring(fileName.lastIndexOf('/') + 1));
 
@@ -75,7 +75,12 @@ public class SimpleFTP {
 		// Check if file exists on server
 		try {
 			if (!inputStream.readBoolean()) {
-				System.out.println("File does not exist on server.");
+				if (isNewThread) {
+					System.out.print("\rFile does not exist on server.                                               " +
+							"\n" + PROMPT);
+				} else {
+					System.out.println("File does not exist on server.");
+				}
 
 				fileLocks.removeLock(localFile);
 				return;
@@ -92,7 +97,12 @@ public class SimpleFTP {
 		// Get command ID
 		try {
 			ID = inputStream.readLong();
-			System.out.println("ID: " + ID);
+			if (isNewThread) {
+				System.out.print("\rID: " + ID + "                                                                   " +
+						"\n" + PROMPT);
+			} else {
+				System.out.println("ID: " + ID);
+			}
 		} catch (IOException e) {
 			return;
 		}
@@ -106,31 +116,38 @@ public class SimpleFTP {
         	long length = inputStream.readLong();
 
         	byte[] buffer = new byte[1000];
-        	while (length > 0 && (bytes = inputStream.read(buffer, 0, (int) Math.min(buffer.length, length))) != -1) {
-        	    // Cleanup file if transfer was terminated
-				if (Arrays.equals(buffer, "terminate".getBytes())) {
-					fileOutputStream.close();
-					localFile.delete();
-					fileLocks.removeLock(localFile);
-					readResponse();
-					return;
-				}
-
+        	boolean isRunning = inputStream.readBoolean();
+        	while (length > 0 && isRunning
+					&& (bytes = inputStream.read(buffer, 0, (int) Math.min(buffer.length, length))) != -1) {
         		fileOutputStream.write(buffer, 0 , bytes);
         		length -= bytes;
+
+        		if (length > 0) {
+					isRunning = inputStream.readBoolean();
+				}
 			}
 
-        	fileOutputStream.close();
+			fileOutputStream.close();
+        	if (!isRunning) {
+        		localFile.delete();
+			}
         	readResponse();
 		} catch (IOException e) {
             e.printStackTrace();
 		}
 
         fileLocks.removeLock(localFile);
-		System.out.println("Received file: " + fileName);
+        if (isRunning) {
+			if (isNewThread) {
+				System.out.print("\rReceived file: " + fileName + "                                                      " +
+						"\n" + PROMPT);
+			} else {
+				System.out.println("Received file: " + fileName);
+			}
+		}
 	}
 
-	private void put(String fileName) {
+	private void put(String fileName, boolean isNewThread) {
 		isRunning = true;
 		File localFile = new File(fileName);
 		if (!localFile.exists()) {
@@ -149,7 +166,12 @@ public class SimpleFTP {
 		// Put command ID
 		try {
 			ID = inputStream.readLong();
-			System.out.println("ID: " + ID);
+			if (isNewThread) {
+				System.out.print("\rID: " + ID + "                                                                   " +
+						"\n" + PROMPT);
+			} else {
+				System.out.println("ID: " + ID);
+			}
 		} catch (IOException e) {
 		    e.printStackTrace();
 		}
@@ -171,21 +193,22 @@ public class SimpleFTP {
 				outputStream.flush();
 			}
 
-			// Sends terminate string if task was terminated
-			if (!isRunning) {
-				buffer = "terminate".getBytes();
-				outputStream.write(buffer, 0, buffer.length);
-				outputStream.flush();
+			if (isRunning) {
+				if (isNewThread) {
+					System.out.print("\rSent file: " + fileName + "                                                  " +
+							"\n" + PROMPT);
+				} else {
+					System.out.println("Sent file: " + fileName);
+				}
 			}
-
+			readResponse();
 			fileInputStream.close();
-			System.out.println("Sent file: " + fileName);
+
 		} catch (IOException e) {
 		    e.printStackTrace();
 		}
 
 		fileLocks.removeLock(localFile);
-		readResponse();
 	}
 
 	private void writeCommand(TaskType taskType) {
@@ -249,31 +272,35 @@ public class SimpleFTP {
 				if (cmd.endsWith("&")) {
 					final String fileName = cmd.substring(cmd.indexOf(" ") + 1, cmd.length() - 2);
 					Runnable task = () -> {
-						get(fileName);
+						get(fileName, true);
 					};
 
 					new Thread(task).start();
 				} else {
 					String fileName = cmd.substring(cmd.indexOf(" ") + 1);
-					get(fileName);
+					get(fileName, false);
 				}
 			} else if (cmd.startsWith("put")) {
 				if (cmd.endsWith("&")) {
 					final String fileName = cmd.substring(cmd.indexOf(" ") + 1, cmd.length() - 2);
 					Runnable task = () -> {
-						put(fileName);
+						put(fileName, true);
 					};
 
 					new Thread(task).start();
 				} else {
 					String fileName = cmd.substring(cmd.indexOf(" ") + 1);
-					put(fileName);
+					put(fileName, false);
 				}
 			} else if (cmd.startsWith("delete")) {
 				writeCommand(TaskType.DELETE, cmd.substring(cmd.indexOf(" ") + 1));
 				System.out.println(readResponse());
 			} else if (cmd.startsWith("terminate")) {
-				terminate(Long.parseLong(cmd.substring(cmd.indexOf(" ") + 1)));
+				if (cmd.equals("terminate")) {
+					System.out.println("Please enter an ID to terminate.");
+				} else {
+					terminate(Long.parseLong(cmd.substring(cmd.indexOf(" ") + 1)));
+				}
 			} else {
 				System.out.println("[ERROR] Command not recognized!");
 			}

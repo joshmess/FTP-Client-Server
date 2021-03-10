@@ -171,20 +171,17 @@ class NormalConnection implements Runnable {
 
                 // Send file chunks
                 byte[] buffer = new byte[1000];
-                while ((bytes = fileInputStream.read(buffer)) != -1 && isCmdRunning) {
-                    outputStream.write(buffer, 0, bytes);
-                    outputStream.flush();
-                }
-
-                // If terminated, send terminate bytes to client so client can
-                // terminate as well.
-                // This is to guarantee that the client socket doesn't have
-                // transient bytes still in the inputStream in an implementation
-                // where the client terminates recv before the server terminates send.
-                if (!isCmdRunning) {
-                    buffer = "terminate".getBytes();
-                    outputStream.write(buffer, 0, buffer.length);
-                    outputStream.flush();
+                while ((bytes = fileInputStream.read(buffer)) != -1) {
+                    if (isCmdRunning) {
+                        outputStream.writeBoolean(true);
+                        outputStream.write(buffer, 0, bytes);
+                        outputStream.flush();
+                    } else {
+                        // If terminated, let client know all transient packets delivered.
+                        outputStream.writeBoolean(false);
+                        outputStream.flush();
+                        break;
+                    }
                 }
 
                 // Cleanup
@@ -230,17 +227,11 @@ class NormalConnection implements Runnable {
                     length -= bytes;
                 }
 
-                // Cleanup file and stream if transfer was terminated
-                if (!isCmdRunning) {
-                    while (!Arrays.equals(buffer, "terminate".getBytes())) {
-                        inputStream.read(buffer, 0, 1000);
-                    }
-
-                    putFile.delete();
-                }
-
                 // Cleanup
                 fileOutputStream.close();
+                if (!isCmdRunning) {
+                    putFile.delete();
+                }
                 fileLocks.removeLock(putFile);
                 taskTable.removeTask(putID);
             } catch (IOException f) {
