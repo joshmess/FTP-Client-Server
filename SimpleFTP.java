@@ -13,14 +13,14 @@ public class SimpleFTP {
 	private Scanner sc;
 	private int tPort;
 	private FileLocks fileLocks;
-	private TaskTable taskTable;
+	private volatile boolean isRunning;
+	private volatile long ID;
 
 	public SimpleFTP(String machine, int nPort, int tPort) {
 		this.tPort = tPort;
 		this.machine = machine;
 		this.sc = new Scanner(System.in);
 		this.fileLocks = new FileLocks();
-		this.taskTable = new TaskTable();
 		try {
 			// Normal client socket
 			nSocket = new Socket(machine, nPort);
@@ -39,6 +39,13 @@ public class SimpleFTP {
 			DataInputStream dataInputStream = new DataInputStream(tSocket.getInputStream());
 			DataOutputStream dataOutputStream = new DataOutputStream(tSocket.getOutputStream());
 
+			if (this.ID == ID) {
+				isRunning = false;
+			} else {
+				System.out.println("Invalid task ID.");
+				return;
+			}
+
 			// Send command ID to server
 			dataOutputStream.writeLong(ID);
 			if (dataInputStream.readBoolean()) {
@@ -56,10 +63,10 @@ public class SimpleFTP {
 		// Local filename
 		File localFile = new File(fileName.substring(fileName.lastIndexOf('/') + 1));
 
-		// Lock file, reattempts every 2 seconds
+		// Lock file, reattempts every second
 		while (!fileLocks.addLock(localFile)) {
 			try {
-				Thread.currentThread().sleep(2000);
+				Thread.currentThread().sleep(1000);
 			} catch (InterruptedException e) {
 			}
 		}
@@ -74,7 +81,7 @@ public class SimpleFTP {
 				return;
 			}
 		} catch (IOException e) {
-			return;
+		    e.printStackTrace();
 		}
 
 		// Delete local version of file if already present
@@ -83,7 +90,6 @@ public class SimpleFTP {
 		}
 
 		// Get command ID
-		long ID;
 		try {
 			ID = inputStream.readLong();
 			System.out.println("ID: " + ID);
@@ -106,6 +112,7 @@ public class SimpleFTP {
 					fileOutputStream.close();
 					localFile.delete();
 					fileLocks.removeLock(localFile);
+					readResponse();
 					return;
 				}
 
@@ -116,34 +123,35 @@ public class SimpleFTP {
         	fileOutputStream.close();
         	readResponse();
 		} catch (IOException e) {
-        	// TODO
+            e.printStackTrace();
 		}
 
         fileLocks.removeLock(localFile);
+		System.out.println("Received file: " + fileName);
 	}
 
 	private void put(String fileName) {
+		isRunning = true;
 		File localFile = new File(fileName);
 		if (!localFile.exists()) {
 			System.out.println("[ERROR] Local file not found.");
 			return;
 		}
 
-		// Lock file, reattempts every 2 seconds
+		// Lock file, reattempts every second
 		while (!fileLocks.addLock(localFile)) {
 			try {
-				Thread.currentThread().sleep(2000);
+				Thread.currentThread().sleep(1000);
 			} catch (InterruptedException e) { }
 		}
 		writeCommand(TaskType.PUT, fileName);
 
 		// Put command ID
-		long ID = 0;
 		try {
 			ID = inputStream.readLong();
 			System.out.println("ID: " + ID);
 		} catch (IOException e) {
-		    // TODO
+		    e.printStackTrace();
 		}
 
 		// Send file chunks
@@ -158,12 +166,13 @@ public class SimpleFTP {
 			// Send file chunks
 			byte[] buffer = new byte[1000];
 			while ((bytes = fileInputStream.read(buffer)) != -1
-						&& taskTable.isRunning(ID)) {
+						&& isRunning) {
 				outputStream.write(buffer, 0, bytes);
 				outputStream.flush();
 			}
 
-			if (!taskTable.isRunning(ID)) {
+			// Sends terminate string if task was terminated
+			if (!isRunning) {
 				buffer = "terminate".getBytes();
 				outputStream.write(buffer, 0, buffer.length);
 				outputStream.flush();
@@ -172,7 +181,7 @@ public class SimpleFTP {
 			fileInputStream.close();
 			System.out.println("Sent file: " + fileName);
 		} catch (IOException e) {
-			// TODO
+		    e.printStackTrace();
 		}
 
 		fileLocks.removeLock(localFile);
@@ -198,6 +207,11 @@ public class SimpleFTP {
 		}
 	}
 
+	/**
+	 * Reads a string response from the server. Returns an empty string if there was
+	 * an error reading server response.
+	 * @return server response
+	 */
 	private String readResponse() {
 		String response = "";
 		try {
@@ -227,10 +241,10 @@ public class SimpleFTP {
 			} else if (cmd.startsWith("cd")) {
 				if (cmd.equals("cd")) {
 					System.out.println("Must enter a directory name.");
-					break;
+				} else {
+					writeCommand(TaskType.CD, cmd.substring(cmd.indexOf(" ") + 1));
+					System.out.println(readResponse());
 				}
-				writeCommand(TaskType.CD, cmd.substring(cmd.indexOf(" ") + 1));
-				System.out.println(readResponse());
 			} else if (cmd.startsWith("get")) {
 				if (cmd.endsWith("&")) {
 					final String fileName = cmd.substring(cmd.indexOf(" ") + 1, cmd.length() - 2);
@@ -266,7 +280,6 @@ public class SimpleFTP {
 
 			// Receive command
 			System.out.print(PROMPT);
-//			previousCMD=cmd;
 			cmd = sc.nextLine().trim();
 		}
 

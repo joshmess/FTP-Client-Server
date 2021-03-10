@@ -15,6 +15,7 @@ class NormalConnection implements Runnable {
     private FileLocks fileLocks;
     private TaskTable taskTable;
     private volatile boolean exitThread;
+    private volatile boolean isCmdRunning;
 
     NormalConnection(Socket clientSocket, FileLocks fileLocks, TaskTable taskTable) {
         System.out.println("[Normal Port]: New connection.");
@@ -24,6 +25,7 @@ class NormalConnection implements Runnable {
         this.taskTable = taskTable;
         this.pwd = new File(".");
         exitThread = false;
+        isCmdRunning = true;
 
         try {
             outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
@@ -52,6 +54,7 @@ class NormalConnection implements Runnable {
     }
 
     private boolean processCommand() {
+        isCmdRunning = true;
         TaskType command = null;
         String fileName = null;
         try {
@@ -78,201 +81,217 @@ class NormalConnection implements Runnable {
             return false;
         }
 
+        // Response is written to outputStream after command is processed.
         String response = "";
-        switch (command) {
-            case LS:
-                File[] fileList = pwd.listFiles();
-                Arrays.sort(fileList);
+        if (command == TaskType.LS) {
+            File[] fileList = pwd.listFiles();
+            Arrays.sort(fileList);
 
-                for (File file: fileList) {
-                    response += file.getName() + " ";
-                }
-                break;
-            case PWD:
-                try {
-                    response = pwd.getCanonicalPath();
-                } catch (IOException e) {
-                    response = "[ERROR] Unable to get present working directory.";
-                }
-                break;
-            case MKDIR:
-                File file = new File(pwd, fileName);
-                if (file.mkdir()) {
-                    response = "Directory created.";
+            for (File file: fileList) {
+                response += file.getName() + " ";
+            }
+        } else if (command == TaskType.PWD) {
+            try {
+                response = pwd.getCanonicalPath();
+            } catch (IOException e) {
+                response = "[ERROR] Server unable to get present working directory.";
+            }
+        } else if (command == TaskType.MKDIR) {
+            File file = new File(pwd, fileName);
+            if (file.mkdir()) {
+                response = "Directory created.";
+            } else {
+                response = "[ERROR] Server unable to make directory.";
+            }
+        } else if (command == TaskType.CD) {
+            if (fileName.equals("..")) {
+                File parent = pwd.getParentFile();
+
+                // If already in root directory, getParentFile() returns null
+                if (parent != null) {
+                    pwd = parent;
+                    response = "Changing working directory to " + fileName;
                 } else {
-                    response = "[ERROR] Unable to make directory.";
+                    response = "Already in root directory.";
                 }
-                break;
-            case CD:
-                if (fileName.equals("..")) {
-                    File parent = pwd.getParentFile();
+            } else {
+                // Navigate into specified directory
+                File child = new File(pwd, fileName);
 
-                    // If already in root directory, getParentFile() returns null
-                    if (parent != null) {
-                        pwd = parent;
+                if (child.exists()) {
+                    if (child.isDirectory()) {
+                        pwd = child;
                         response = "Changing working directory to " + fileName;
                     } else {
-                        response = "Already in root directory.";
+                        response = fileName + " is not a directory!";
                     }
                 } else {
-                    // Navigate into specified directory
-                    File child = new File(pwd, fileName);
-
-                    if (child.exists()) {
-                        if (child.isDirectory()) {
-                            pwd = child;
-                            response = "Changing working directory to " + fileName;
-                        } else {
-                            response = fileName + " is not a directory!";
-                        }
-                    } else {
-                        response = "Directory not found.";
-                    }
+                    response = "Directory not found.";
                 }
-                break;
-            case GET:
-                File getFile = new File(pwd, fileName);
+            }
+        } else if (command == TaskType.GET) {
+            File getFile = new File(pwd, fileName);
 
-                // Let client know if file exits
-                try {
-                    if (getFile.exists()) {
-                        outputStream.writeBoolean(true);
-                        outputStream.flush();
-                    } else {
-                        outputStream.writeBoolean(false);
-                        outputStream.flush();
-                        break;
-                    }
-                } catch (IOException e) {
-                    // TODO
-                }
-
-                long getID = createID();
-                taskTable.addTask(getID);
-
-                try {
-                    outputStream.writeLong(getID);
+            // Let client know if file exits
+            try {
+                if (getFile.exists()) {
+                    outputStream.writeBoolean(true);
                     outputStream.flush();
-
-                    // Lock file, reattempts every 2 seconds
-                    while (!fileLocks.addLock(getFile)) {
-                        try {
-                            Thread.currentThread().sleep(2000);
-                        } catch (InterruptedException e) { }
-                    }
-
-                    int bytes = 0;
-                    FileInputStream fileInputStream = new FileInputStream(getFile);
-
-                    // Send file length
-                    outputStream.writeLong(getFile.length());
+                } else {
+                    // Client will end transfer as well.
+                    outputStream.writeBoolean(false);
                     outputStream.flush();
+                    return true;
+                }
+            } catch (IOException e) {
+                System.out.println("[ERROR] Unable to send response to client. Closing connection...");
+                return false;
+            }
 
-                    // Send file chunks
-                    byte[] buffer = new byte[1000];
-                    while ((bytes = fileInputStream.read(buffer)) != -1 && taskTable.isRunning(getID)) {
-                        outputStream.write(buffer, 0, bytes);
-                        outputStream.flush();
-                    }
+            // Lock file, reattempts every second
+            while (!fileLocks.addLock(getFile)) {
+                try {
+                    Thread.currentThread().sleep(1000);
+                } catch (InterruptedException e) { }
+            }
 
-                    // If terminated, send terminate bytes to client so client can
-                    // terminate as well.
-                    // This is to guarantee that the client socket doesn't have
-                    // transient bytes still in the inputstream in an implementation
-                    // where the client terminates recv before the server terminates send.
-                    if (!taskTable.isRunning(getID)) {
-                        buffer = "terminate".getBytes();
-                        outputStream.write(buffer, 0, buffer.length);
-                        outputStream.flush();
-                    }
+            long getID = createID();
+            taskTable.addTask(getID, this);
 
-                    // Cleanup
-                    fileInputStream.close();
-                    fileLocks.removeLock(getFile);
-                    taskTable.removeTask(getID);
-                } catch (IOException e) {
-                    fileLocks.removeLock(getFile);
-                    taskTable.removeTask(getID);
+            try {
+                outputStream.writeLong(getID);
+                outputStream.flush();
+
+                int bytes = 0;
+                FileInputStream fileInputStream = new FileInputStream(getFile);
+
+                // Send file length
+                outputStream.writeLong(getFile.length());
+                outputStream.flush();
+
+                // Send file chunks
+                byte[] buffer = new byte[1000];
+                while ((bytes = fileInputStream.read(buffer)) != -1 && isCmdRunning) {
+                    outputStream.write(buffer, 0, bytes);
+                    outputStream.flush();
                 }
 
-                break;
-            case PUT:
-                File putFile = new File(pwd, fileName);
-                long putID = createID();
-                taskTable.addTask(putID);
+                // If terminated, send terminate bytes to client so client can
+                // terminate as well.
+                // This is to guarantee that the client socket doesn't have
+                // transient bytes still in the inputStream in an implementation
+                // where the client terminates recv before the server terminates send.
+                if (!isCmdRunning) {
+                    buffer = "terminate".getBytes();
+                    outputStream.write(buffer, 0, buffer.length);
+                    outputStream.flush();
+                }
 
-                // Delete local version of file if already present
-                if (putFile.exists()) {
+                // Cleanup
+                fileInputStream.close();
+                fileLocks.removeLock(getFile);
+                taskTable.removeTask(getID);
+            } catch (IOException e) {
+                fileLocks.removeLock(getFile);
+                taskTable.removeTask(getID);
+            }
+        } else if (command == TaskType.PUT) {
+            File putFile = new File(pwd, fileName);
+            long putID = createID();
+            taskTable.addTask(putID, this);
+
+            // Delete local version of file if already present
+            if (putFile.exists()) {
+                putFile.delete();
+            }
+
+            try {
+                outputStream.writeLong(putID);
+                outputStream.flush();
+
+                // Lock file, reattempts every 2 seconds
+                while (!fileLocks.addLock(putFile)) {
+                    try {
+                        Thread.currentThread().sleep(2000);
+                    } catch (InterruptedException e) {
+                    }
+                }
+
+                int bytes = 0;
+                FileOutputStream fileOutputStream = new FileOutputStream(putFile);
+
+                // Read file length
+                long length = inputStream.readLong();
+
+                byte[] buffer = new byte[1000];
+                while (length > 0 && isCmdRunning
+                        && (bytes = inputStream.read(buffer, 0, (int) Math.min(buffer.length, length))) != -1) {
+                    fileOutputStream.write(buffer, 0, bytes);
+                    length -= bytes;
+                }
+
+                // Cleanup file and stream if transfer was terminated
+                if (!isCmdRunning) {
+                    while (!Arrays.equals(buffer, "terminate".getBytes())) {
+                        inputStream.read(buffer, 0, 1000);
+                    }
+
                     putFile.delete();
                 }
 
-                try {
-                    outputStream.writeLong(putID);
-                    outputStream.flush();
+                // Cleanup
+                fileOutputStream.close();
+                fileLocks.removeLock(putFile);
+                taskTable.removeTask(putID);
+            } catch (IOException f) {
+                fileLocks.removeLock(putFile);
+                taskTable.removeTask(putID);
+            }
+        } else if (command == TaskType.DELETE) {
+            File deleteFile = new File(pwd, fileName);
 
-                    // Lock file, reattempts every 2 seconds
-                    while (!fileLocks.addLock(putFile)) {
+            if (deleteFile.exists()) {
+                if (deleteFile.isDirectory()) {
+                    if (deleteFile.list().length != 0) {
+                        response = "Failed to delete directory, not empty.";
+                    } else if (deleteFile.delete()) {
+                        response = "Directory " + fileName + " deleted.";
+                    } else {
+                        response = "Failed to delete directory " + fileName;
+                    }
+                } else {
+                    // Lock file, reattempts every second
+                    while (!fileLocks.addLock(deleteFile)) {
                         try {
-                            Thread.currentThread().sleep(2000);
+                            Thread.currentThread().sleep(1000);
                         } catch (InterruptedException e) { }
                     }
 
-                    int bytes = 0;
-                    FileOutputStream fileOutputStream = new FileOutputStream(putFile);
+                    if (deleteFile.delete()) {
 
-                    // Read file length
-                    long length = inputStream.readLong();
-
-                    byte[] buffer = new byte[1000];
-                    while (length > 0 && taskTable.isRunning(putID)
-                            && (bytes = inputStream.read(buffer, 0, (int) Math.min(buffer.length, length))) != -1) {
-                        // Cleanup file if transfer was terminated
-                        if (Arrays.equals(buffer, "terminate".getBytes())) {
-                            fileOutputStream.close();
-                            putFile.delete();
-                            fileLocks.removeLock(putFile);
-                            taskTable.removeTask(putID);
-                            return true;
-                        }
-                        fileOutputStream.write(buffer, 0, bytes);
-                        length -= bytes;
-                    }
-
-                    // Cleanup
-                    fileOutputStream.close();
-                    fileLocks.removeLock(putFile);
-                    taskTable.removeTask(putID);
-                } catch (IOException f) {
-                    fileLocks.removeLock(putFile);
-                    taskTable.removeTask(putID);
-                }
-                break;
-            case DELETE:
-                File deleteFile = new File(pwd, fileName);
-
-                if (deleteFile.exists()) {
-                    if (deleteFile.isDirectory()) {
-                        if (deleteFile.delete()) {
-                            response = "Directory " + fileName + " deleted.";
-                        } else {
-                            response = "Failed to delete directory " + fileName;
-                        }
+                        response = "File " + fileName + " deleted.";
                     } else {
-                        if (deleteFile.delete()) {
-                            response = "File " + fileName + " deleted.";
-                        } else {
-                            response = "Failed to delete file " + fileName;
-                        }
+                        response = "Failed to delete file " + fileName;
                     }
-                } else {
-                    response = "File not found.";
+                    fileLocks.removeLock(deleteFile);
                 }
-                break;
+            } else {
+                response = "File not found.";
+            }
         }
 
         // Write response if command did not quit.
-        writeResponse(response);
+        if (command != TaskType.GET || command != TaskType.PUT) {
+            writeResponse(response);
+        }
         return true;
+    }
+
+    /**
+     * Sets terminate flag for this connections currently running get/put task.
+     */
+    public void terminate() {
+        this.isCmdRunning = false;
     }
 
     /**
@@ -299,13 +318,15 @@ class NormalConnection implements Runnable {
             } catch (IOException e) {
                 System.err.println("[ERROR] Exception encountered while closing TerminateConnection i/o stream.");
             }
-            System.out.println("[Normal Port]: Connection closed.");
         }
 
         try {
             clientSocket.close();
         } catch (IOException e) {
             System.err.println("[ERROR] Exception encountered while closing NormalConnection socket.");
+            return;
         }
+
+        System.out.println("[Normal Port]: Connection closed.");
     }
 }

@@ -8,8 +8,8 @@ import java.net.Socket;
  */
 class ConnectionListener implements Runnable {
     public enum ListenerType {
-        NORMAL      ("NORMAL"),
-        TERMINATE   ("TERMINATE");
+        NORMAL      ("Normal"),
+        TERMINATE   ("Terminate");
 
         private final String name;
 

@@ -1,7 +1,7 @@
 import java.util.HashMap;
 
 public class TaskTable {
-    private HashMap<Long, Boolean> taskTable;
+    private HashMap<Long, NormalConnection> taskTable;
 
     public TaskTable() {
         this.taskTable = new HashMap<>();
@@ -11,8 +11,8 @@ public class TaskTable {
      * Called by long-running `NormalConnection` threads.
      * @param ID
      */
-    public synchronized void addTask(long ID) {
-        taskTable.put(ID, true);
+    public synchronized void addTask(long ID, NormalConnection connection) {
+        taskTable.put(ID, connection);
     }
 
     /**
@@ -32,20 +32,9 @@ public class TaskTable {
             return false;
         }
 
-        taskTable.put(ID, false);
+        // If a get/put task is finished, but has not been removed from this TaskTable,
+        // then this effectively does nothing.
+        taskTable.get(ID).terminate();
         return true;
-    }
-
-    /**
-     * Returns status of a long-running task.
-     * @param ID
-     * @return false if the task has been terminated
-     */
-    public synchronized boolean isRunning(long ID) {
-        Boolean runState = taskTable.get(ID);
-        if (runState == null) {
-            return false;
-        }
-        return runState;
     }
 }
